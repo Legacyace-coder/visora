@@ -1,0 +1,35 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+node_modules/
+dist/
+.DS_Store
+# Local environments and caches
+.venv*/
+**/.venv*/
+**/venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+.coverage
+*.log
+
+# Local backups and editor files
+**/backups/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary backup files
+*.bak

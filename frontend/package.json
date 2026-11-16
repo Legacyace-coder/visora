@@ -1,0 +1,17 @@
+{
+  "name": "photography-publishing-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/css/tailwind.css -o ./dist/assets/styles.css --minify",
+    "build:ts": "tsc",
+    "copy:pages": "node scripts/copy-pages.mjs",
+    "build": "npm run build:css && npm run build:ts && npm run copy:pages"
+  },
+  "devDependencies": {
+    "autoprefixer": "10.4.21",
+    "postcss": "^8.5.33",
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.3"
+  }
+}

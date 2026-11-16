@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="api-base-url" content="http://127.0.0.1:8000">
+  <title>Create an account</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body class="auth-page">
+  <a class="wordmark" href="/">VISORA<span>®</span></a>
+
+  <main class="auth wide">
+    <p class="eyebrow">CREATE YOUR ACCOUNT</p>
+    <h1>Join the platform.</h1>
+    <p class="lead">Choose how you want to participate.</p>
+
+    <form id="register-form">
+      <label>Account type
+        <select name="account_type" id="account-type" required>
+          <option value="photographer">Photographer</option>
+          <option value="agent">Agent</option>
+        </select>
+      </label>
+
+      <label>Full name
+        <input name="full_name" autocomplete="name" required minlength="2" maxlength="100">
+      </label>
+
+      <label id="display-name-label">
+        <span id="display-name-caption">Photographer / studio name</span>
+        <input name="display_name" required minlength="1" maxlength="100">
+      </label>
+
+      <label>Email address
+        <input name="email" type="email" autocomplete="email" required>
+      </label>
+
+      <label>Password
+        <input name="password" type="password" minlength="8" maxlength="128"
+          autocomplete="new-password" required>
+      </label>
+
+      <div id="photographer-referral-fields">
+        <label>Photographer referral code
+          <input name="referral_code" placeholder="P-ABC-12345"
+            pattern="P-[A-Za-z0-9]{3}-[A-Za-z0-9]{5}">
+        </label>
+
+        <label>Agent referral code
+          <input name="agent_code" placeholder="A-ABC-12345"
+            pattern="A-[A-Za-z0-9]{3}-[A-Za-z0-9]{5}">
+        </label>
+
+        <p class="hint">
+          Both referral codes are optional. If provided, they will be verified
+          against existing accounts.
+        </p>
+      </div>
+
+      <button class="button button-dark" type="submit">
+        Create account →
+      </button>
+
+      <p id="form-message" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="switch">
+      Already registered? <a href="/login.html">Sign in</a>
+    </p>
+  </main>
+
+  <script src="/assets/js/main.js" defer></script>
+</body>
+</html>
