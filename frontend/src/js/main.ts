@@ -16,9 +16,17 @@ interface ApiResult {
   user?: SessionUser;
 }
 
-const apiBaseUrl =
+const isLocalDevelopment =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+const configuredApiBaseUrl =
   document.querySelector<HTMLMetaElement>('meta[name="api-base-url"]')
-    ?.content.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
+    ?.content.replace(/\/$/, "");
+
+const apiBaseUrl = isLocalDevelopment
+  ? configuredApiBaseUrl ?? "http://127.0.0.1:8000"
+  : "/api";
 
 const year = document.querySelector<HTMLElement>("#year");
 
