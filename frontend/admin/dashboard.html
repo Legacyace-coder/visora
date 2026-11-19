@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -10,7 +10,7 @@
 <body class="dashboard-page">
   <main class="dashboard-shell" data-required-role="admin" hidden>
     <header class="dashboard-header">
-      <a class="wordmark" href="/">IMAGE HOUSE<span>®</span></a>
+      <a class="wordmark" href="/">IMAGE HOUSE<span>Â®</span></a>
       <button class="button button-dark small" id="logout-button" type="button">
         Sign out
       </button>
@@ -41,6 +41,35 @@
       </div>
     </section>
 
+    <section class="admin-settings">
+      <p class="eyebrow">PARTNERSHIP SETTINGS</p>
+      <h2>Purchase destination</h2>
+      <p class="admin-settings-description">
+        Set the destination used by the public partnership purchase link.
+        You can change it here whenever the destination changes.
+      </p>
+
+      <form id="partnership-purchase-form">
+        <label for="partnership-purchase-url">Purchase URL</label>
+        <input
+          id="partnership-purchase-url"
+          name="url"
+          type="url"
+          maxlength="2048"
+          placeholder="https://example.com/checkout"
+          autocomplete="url"
+        >
+        <p class="admin-settings-hint">
+          Use a checkout page that clearly identifies the product being purchased.
+          Leave blank to disable the public purchase link.
+        </p>
+        <button class="button button-dark" type="submit">
+          Save purchase link
+        </button>
+        <p id="partnership-purchase-status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
     <section class="dashboard-notice">
       <p class="eyebrow">YOUR WORKSPACE</p>
       <h2>More is taking shape.</h2>
@@ -51,7 +80,7 @@
     </section>
 
     <footer class="dashboard-footer">
-      <a class="wordmark" href="/">IMAGE HOUSE<span>®</span></a>
+      <a class="wordmark" href="/">IMAGE HOUSE<span>Â®</span></a>
       <small>Photography, considered.</small>
     </footer>
   </main>

@@ -1,6 +1,7 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.dashboard import router as dashboard_router
 from app.api.photographer import router as photographer_router
@@ -22,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(dashboard_router)
 app.include_router(photographer_router)
 
@@ -40,3 +42,4 @@ async def root():
         "message": "Photography Publishing API",
         "docs": "/docs",
     }
+

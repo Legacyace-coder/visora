@@ -272,6 +272,24 @@ footer p, footer small {
 
 .auth-page { min-height: 100vh; padding: 35px 6%; }
 .auth { max-width: 420px; margin: 9vh auto; }
+
+.auth-home-link {
+  display: inline-block;
+  margin-top: 28px;
+  color: #777;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color .2s ease;
+}
+
+.auth-home-link:hover {
+  color: inherit;
+}
+
+.auth-home-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
 .auth.wide { max-width: 530px; margin-top: 5vh; }
 
 .auth h1 {
@@ -848,4 +866,65 @@ html {
     width: 100%;
     order: 3;
   }
+}
+
+/* Admin platform settings */
+.admin-settings {
+  max-width: 650px;
+  padding: 55px 0;
+  border-bottom: 1px solid #d5d4cc;
+}
+
+.admin-settings h2 {
+  margin: 0 0 14px;
+  font-size: clamp(32px, 5vw, 46px);
+  font-weight: 500;
+  letter-spacing: -.06em;
+}
+
+.admin-settings-description,
+.admin-settings-hint {
+  color: #68675f;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.admin-settings form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.admin-settings label {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-settings input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 13px;
+  border: 1px solid #d2d0c8;
+  background: #faf9f5;
+  color: #191916;
+  font: inherit;
+  font-size: 13px;
+}
+
+.admin-settings input:focus {
+  outline: 1px solid #77766e;
+}
+
+.admin-settings form button {
+  border: 0;
+  cursor: pointer;
+}
+
+#partnership-purchase-status {
+  min-height: 20px;
+  color: #68675f;
+  font-size: 11px;
+  line-height: 1.7;
 }

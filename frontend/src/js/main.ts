@@ -481,3 +481,105 @@ logoutButton?.addEventListener("click", async () => {
     window.location.replace("/login.html");
   }
 });
+// Admin: partnership purchase destination
+const partnershipPurchaseForm =
+  document.querySelector<HTMLFormElement>("#partnership-purchase-form");
+
+if (partnershipPurchaseForm) {
+  const purchaseUrlInput =
+    partnershipPurchaseForm.querySelector<HTMLInputElement>(
+      "#partnership-purchase-url"
+    );
+
+  const purchaseStatus =
+    document.querySelector<HTMLElement>(
+      "#partnership-purchase-status"
+    );
+
+  const purchaseSubmit =
+    partnershipPurchaseForm.querySelector<HTMLButtonElement>(
+      'button[type="submit"]'
+    );
+
+  void (async () => {
+    if (!purchaseUrlInput || !purchaseStatus) return;
+
+    purchaseStatus.textContent = "Loading saved purchase destination...";
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/admin/settings/partnership-purchase`,
+        { method: "GET", credentials: "include" }
+      );
+
+      const result = (await response.json()) as ApiResult & {
+        url?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.detail || "Settings could not be loaded.");
+      }
+
+      purchaseUrlInput.value = result.url || "";
+      purchaseStatus.textContent = result.url
+        ? "Saved purchase destination loaded."
+        : "No purchase destination is configured.";
+    } catch (error) {
+      purchaseStatus.textContent =
+        error instanceof Error
+          ? error.message
+          : "Settings could not be loaded.";
+    }
+  })();
+
+  partnershipPurchaseForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    if (!purchaseUrlInput || !purchaseStatus) return;
+
+    const url = purchaseUrlInput.value.trim();
+
+    if (url && !purchaseUrlInput.checkValidity()) {
+      purchaseUrlInput.reportValidity();
+      return;
+    }
+
+    if (purchaseSubmit) {
+      purchaseSubmit.disabled = true;
+      purchaseSubmit.textContent = "Saving...";
+    }
+
+    purchaseStatus.textContent = "Saving purchase destination...";
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/admin/settings/partnership-purchase`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        }
+      );
+
+      const result = (await response.json()) as ApiResult;
+
+      if (!response.ok) {
+        throw new Error(result.detail || "The purchase link could not be saved.");
+      }
+
+      purchaseStatus.textContent =
+        result.message || "Purchase destination saved.";
+    } catch (error) {
+      purchaseStatus.textContent =
+        error instanceof Error
+          ? error.message
+          : "The purchase link could not be saved.";
+    } finally {
+      if (purchaseSubmit) {
+        purchaseSubmit.disabled = false;
+        purchaseSubmit.textContent = "Save purchase link";
+      }
+    }
+  });
+}
