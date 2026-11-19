@@ -1,4 +1,4 @@
-import { mkdir, copyFile } from "node:fs/promises";
+import { mkdir, copyFile, cp } from "node:fs/promises";
 
 await mkdir("dist", { recursive: true });
 
@@ -25,4 +25,5 @@ for (const page of pages) {
   await copyFile(page, destination);
 }
 
-console.log("HTML pages copied to dist.");
+await cp("images", "dist/images", { recursive: true });
+console.log("HTML pages and image assets copied to dist.");
