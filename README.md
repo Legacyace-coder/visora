@@ -45,6 +45,16 @@ http://127.0.0.1:8000/health
 API documentation:
 http://127.0.0.1:8000/docs
 
+For deployments, set `APP_ENV=production` and configure the Supabase URL,
+publishable key, and secret key in the backend environment. The secret key is
+used only for server-side referral-code verification and must never be exposed
+to the frontend.
+
+Apply the SQL migration in `supabase/migrations` to the Supabase project before
+deploying referral registration or submission creation. It adds referral
+relationship columns and an authenticated, transactional RPC for creating
+submissions and their items together.
+
 ## Important
 
 This is a separate application from Northstar Capital.

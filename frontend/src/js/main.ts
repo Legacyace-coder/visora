@@ -254,8 +254,30 @@ interface PhotographerPhoto {
   created_at: string;
 }
 
+interface PhotographerCollection {
+  id: string;
+  title: string;
+  description: string | null;
+}
+
+interface PhotographerSubmission {
+  id: string;
+  submission_type: "individual" | "collection";
+  title: string;
+  status: "pending" | "processing" | "accepted" | "rejected";
+  submitted_at: string;
+}
+
 interface PhotographerPhotosResponse {
   photos: PhotographerPhoto[];
+}
+
+interface PhotographerCollectionsResponse {
+  collections: PhotographerCollection[];
+}
+
+interface PhotographerSubmissionsResponse {
+  submissions: PhotographerSubmission[];
 }
 
 interface PhotographerPreviewResponse {
@@ -263,6 +285,9 @@ interface PhotographerPreviewResponse {
   preview_url: string;
   expires_in: number;
 }
+
+let photographerPhotos: PhotographerPhoto[] = [];
+let photographerCollections: PhotographerCollection[] = [];
 
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "Size unavailable";
@@ -337,10 +362,193 @@ function createPortfolioCard(
   filename.className = "portfolio-filename";
   filename.textContent = photo.original_filename;
 
-  details.append(title, metadata, filename);
+  const selectionLabel = document.createElement("label");
+  selectionLabel.className = "portfolio-selection";
+
+  const selection = document.createElement("input");
+  selection.type = "checkbox";
+  selection.name = "photo_ids";
+  selection.value = photo.id;
+
+  const selectionText = document.createElement("span");
+  selectionText.textContent = "Select for individual submission";
+
+  selectionLabel.append(selection, selectionText);
+  details.append(title, metadata, filename, selectionLabel);
   card.append(imageFrame, details);
 
   return card;
+}
+
+function renderPhotographerCollections(): void {
+  const list = document.querySelector<HTMLElement>("#collection-list");
+  const submissionSelect = document.querySelector<HTMLSelectElement>(
+    "#submission-collection"
+  );
+
+  if (!list) return;
+
+  list.replaceChildren();
+
+  if (submissionSelect) {
+    submissionSelect.replaceChildren(new Option("Choose a collection", ""));
+    photographerCollections.forEach((collection) => {
+      submissionSelect.add(new Option(collection.title, collection.id));
+    });
+  }
+
+  if (photographerCollections.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "workspace-hint";
+    empty.textContent = "You have not created any collections yet.";
+    list.appendChild(empty);
+    return;
+  }
+
+  photographerCollections.forEach((collection) => {
+    const card = document.createElement("article");
+    card.className = "collection-card";
+
+    const title = document.createElement("h4");
+    title.textContent = collection.title;
+
+    const description = document.createElement("p");
+    description.textContent = collection.description || "No description.";
+
+    card.append(title, description);
+
+    if (photographerPhotos.length > 0) {
+      const row = document.createElement("div");
+      row.className = "collection-add-row";
+
+      const label = document.createElement("label");
+      label.textContent = "Add a photograph";
+
+      const select = document.createElement("select");
+      select.add(new Option("Choose a photograph", ""));
+
+      photographerPhotos.forEach((photo) => {
+        select.add(
+          new Option(
+            photo.title || photo.original_filename,
+            photo.id
+          )
+        );
+      });
+
+      label.appendChild(select);
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button button-dark small";
+      button.dataset.addToCollection = collection.id;
+      button.textContent = "Add photograph";
+
+      row.append(label, button);
+      card.appendChild(row);
+    } else {
+      const hint = document.createElement("p");
+      hint.textContent = "Upload a photograph before adding items.";
+      card.appendChild(hint);
+    }
+
+    const status = document.createElement("p");
+    status.dataset.collectionStatus = collection.id;
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    card.appendChild(status);
+
+    list.appendChild(card);
+  });
+}
+
+async function loadPhotographerCollections(): Promise<void> {
+  const status = document.querySelector<HTMLElement>(
+    "#collection-create-status"
+  );
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/collections`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const result = (await response.json()) as
+      | PhotographerCollectionsResponse
+      | ApiResult;
+
+    if (!response.ok) {
+      const errorResult = result as ApiResult;
+      throw new Error(errorResult.detail || "Collections could not be loaded.");
+    }
+
+    photographerCollections =
+      (result as PhotographerCollectionsResponse).collections ?? [];
+    renderPhotographerCollections();
+  } catch (error) {
+    if (status) {
+      status.textContent =
+        error instanceof Error ? error.message : "Collections could not be loaded.";
+    }
+  }
+}
+
+async function loadPhotographerSubmissions(): Promise<void> {
+  const list = document.querySelector<HTMLElement>("#submission-list");
+  if (!list) return;
+
+  list.replaceChildren();
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/submissions`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const result = (await response.json()) as
+      | PhotographerSubmissionsResponse
+      | ApiResult;
+
+    if (!response.ok) {
+      const errorResult = result as ApiResult;
+      throw new Error(errorResult.detail || "Submission history could not be loaded.");
+    }
+
+    const submissions =
+      (result as PhotographerSubmissionsResponse).submissions ?? [];
+
+    if (submissions.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "workspace-hint";
+      empty.textContent = "You have not submitted any work yet.";
+      list.appendChild(empty);
+      return;
+    }
+
+    submissions.forEach((submission) => {
+      const card = document.createElement("article");
+      card.className = "submission-card";
+
+      const title = document.createElement("h4");
+      title.textContent = submission.title;
+
+      const details = document.createElement("p");
+      const submittedAt = submission.submitted_at
+        ? new Date(submission.submitted_at).toLocaleDateString()
+        : "Date unavailable";
+      details.textContent =
+        `${submission.submission_type} · ${submission.status} · ${submittedAt}`;
+
+      card.append(title, details);
+      list.appendChild(card);
+    });
+  } catch (error) {
+    const status = document.createElement("p");
+    status.className = "workspace-hint";
+    status.textContent =
+      error instanceof Error
+        ? error.message
+        : "Submission history could not be loaded.";
+    list.appendChild(status);
+  }
 }
 
 async function loadPhotographerPortfolio(): Promise<void> {
@@ -371,11 +579,13 @@ async function loadPhotographerPortfolio(): Promise<void> {
     }
 
     const photos = (result as PhotographerPhotosResponse).photos ?? [];
+    photographerPhotos = photos;
 
     count.textContent = String(photos.length);
 
     if (photos.length === 0) {
       status.textContent = "Your portfolio is empty. Your uploaded photographs will appear here.";
+      renderPhotographerCollections();
       return;
     }
 
@@ -409,14 +619,269 @@ async function loadPhotographerPortfolio(): Promise<void> {
     );
 
     grid.replaceChildren(...cards);
+    renderPhotographerCollections();
   } catch (error) {
     count.textContent = "—";
     status.textContent =
       error instanceof Error
         ? error.message
         : "Your portfolio could not be loaded. Please try again.";
+    photographerPhotos = [];
+    renderPhotographerCollections();
   }
 }
+
+const photoUploadForm =
+  document.querySelector<HTMLFormElement>("#photo-upload-form");
+
+photoUploadForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const status = document.querySelector<HTMLElement>("#photo-upload-status");
+  const submitButton =
+    photoUploadForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+  if (!status) return;
+
+  const formData = new FormData(photoUploadForm);
+  status.textContent = "Uploading photograph...";
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/photos`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+    const result = (await response.json()) as ApiResult;
+
+    if (!response.ok) {
+      throw new Error(result.detail || "The photograph could not be uploaded.");
+    }
+
+    photoUploadForm.reset();
+    status.textContent = "Photograph uploaded.";
+    await loadPhotographerPortfolio();
+  } catch (error) {
+    status.textContent =
+      error instanceof Error
+        ? error.message
+        : "The photograph could not be uploaded.";
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+});
+
+const collectionCreateForm =
+  document.querySelector<HTMLFormElement>("#collection-create-form");
+
+collectionCreateForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const status = document.querySelector<HTMLElement>(
+    "#collection-create-status"
+  );
+  const submitButton =
+    collectionCreateForm.querySelector<HTMLButtonElement>(
+      'button[type="submit"]'
+    );
+  if (!status) return;
+
+  const formData = new FormData(collectionCreateForm);
+  status.textContent = "Creating collection...";
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/collections`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: String(formData.get("title") ?? "").trim(),
+        description: String(formData.get("description") ?? "").trim() || null,
+      }),
+    });
+    const result = (await response.json()) as ApiResult;
+
+    if (!response.ok) {
+      throw new Error(result.detail || "The collection could not be created.");
+    }
+
+    collectionCreateForm.reset();
+    status.textContent = "Collection created.";
+    await loadPhotographerCollections();
+  } catch (error) {
+    status.textContent =
+      error instanceof Error
+        ? error.message
+        : "The collection could not be created.";
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+});
+
+const collectionList =
+  document.querySelector<HTMLElement>("#collection-list");
+
+collectionList?.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+
+  const button = target.closest<HTMLButtonElement>("[data-add-to-collection]");
+  if (!button) return;
+
+  const collectionId = button.dataset.addToCollection;
+  if (!collectionId) return;
+
+  const card = button.closest<HTMLElement>(".collection-card");
+  const select = card?.querySelector<HTMLSelectElement>("select");
+  const status = card?.querySelector<HTMLElement>("[data-collection-status]");
+
+  if (!select?.value || !status) {
+    if (status) status.textContent = "Choose a photograph first.";
+    return;
+  }
+
+  button.disabled = true;
+  status.textContent = "Adding photograph...";
+
+  try {
+    const response = await fetch(
+      `${apiBaseUrl}/photographer/collections/${encodeURIComponent(collectionId)}/photos`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photo_id: select.value }),
+      }
+    );
+    const result = (await response.json()) as ApiResult;
+
+    if (!response.ok) {
+      throw new Error(result.detail || "The photograph could not be added.");
+    }
+
+    status.textContent = "Photograph added to collection.";
+  } catch (error) {
+    status.textContent =
+      error instanceof Error
+        ? error.message
+        : "The photograph could not be added.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+const individualSubmissionForm =
+  document.querySelector<HTMLFormElement>("#individual-submission-form");
+
+individualSubmissionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const status = document.querySelector<HTMLElement>(
+    "#individual-submission-status"
+  );
+  const submitButton =
+    individualSubmissionForm.querySelector<HTMLButtonElement>(
+      'button[type="submit"]'
+    );
+  if (!status) return;
+
+  const photoIds = Array.from(
+    document.querySelectorAll<HTMLInputElement>(
+      '#portfolio-grid input[name="photo_ids"]:checked'
+    )
+  ).map((input) => input.value);
+
+  if (photoIds.length === 0) {
+    status.textContent = "Select at least one photograph.";
+    return;
+  }
+
+  const formData = new FormData(individualSubmissionForm);
+  status.textContent = "Submitting photographs...";
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/submissions`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submission_type: "individual",
+        title: String(formData.get("title") ?? "").trim(),
+        cover_note: String(formData.get("cover_note") ?? "").trim() || null,
+        photo_ids: photoIds,
+      }),
+    });
+    const result = (await response.json()) as ApiResult;
+
+    if (!response.ok) {
+      throw new Error(result.detail || "The submission could not be created.");
+    }
+
+    individualSubmissionForm.reset();
+    status.textContent = "Photographs submitted for review.";
+    await loadPhotographerSubmissions();
+  } catch (error) {
+    status.textContent =
+      error instanceof Error
+        ? error.message
+        : "The submission could not be created.";
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+});
+
+const collectionSubmissionForm =
+  document.querySelector<HTMLFormElement>("#collection-submission-form");
+
+collectionSubmissionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const status = document.querySelector<HTMLElement>(
+    "#collection-submission-status"
+  );
+  const submitButton =
+    collectionSubmissionForm.querySelector<HTMLButtonElement>(
+      'button[type="submit"]'
+    );
+  if (!status) return;
+
+  const formData = new FormData(collectionSubmissionForm);
+  status.textContent = "Submitting collection...";
+  if (submitButton) submitButton.disabled = true;
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/submissions`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submission_type: "collection",
+        title: String(formData.get("title") ?? "").trim(),
+        cover_note: String(formData.get("cover_note") ?? "").trim() || null,
+        collection_id: String(formData.get("collection_id") ?? ""),
+      }),
+    });
+    const result = (await response.json()) as ApiResult;
+
+    if (!response.ok) {
+      throw new Error(result.detail || "The collection could not be submitted.");
+    }
+
+    collectionSubmissionForm.reset();
+    status.textContent = "Collection submitted for review.";
+    await loadPhotographerSubmissions();
+  } catch (error) {
+    status.textContent =
+      error instanceof Error
+        ? error.message
+        : "The collection could not be submitted.";
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+});
 // Protected dashboard pages
 const dashboard = document.querySelector<HTMLElement>(
   "[data-required-role]"
@@ -467,7 +932,11 @@ if (dashboard) {
     dashboard.hidden = false;
 
     if (requiredRole === "photographer") {
-      void loadPhotographerPortfolio();
+      void Promise.all([
+        loadPhotographerCollections(),
+        loadPhotographerPortfolio(),
+        loadPhotographerSubmissions(),
+      ]);
     }
   })();
 }

@@ -8,9 +8,10 @@ Photographers submit photographs they own or are authorized to represent. The co
 
 ## Account Roles
 
-Exactly two account classes:
-- admin: the only privileged role
-- photographer: the default registered user role
+Three account roles:
+- admin: the only privileged role; assigned through trusted administration, never public registration
+- photographer: the default public account role
+- agent: a public account role for referral partners
 
 No separate finance, reviewer or moderator roles.
 

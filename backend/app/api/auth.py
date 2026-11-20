@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
@@ -33,10 +33,10 @@ class RegistrationRequest(BaseModel):
             raise ValueError("Enter a valid email address.")
         return value
 
-    @field_validator("full_name", "display_name")
+    @field_validator("full_name", "display_name", mode="before")
     @classmethod
-    def normalize_names(cls, value: str) -> str:
-        return value.strip()
+    def normalize_names(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     @field_validator("referral_code", "agent_code")
     @classmethod
@@ -67,6 +67,104 @@ def get_supabase_client():
         settings.supabase_url,
         settings.supabase_publishable_key,
     )
+
+
+def get_supabase_service_client():
+    if not settings.supabase_url or not settings.supabase_secret_key:
+        raise HTTPException(
+            503,
+            "Referral verification is not configured.",
+        )
+
+    return create_client(
+        settings.supabase_url,
+        settings.supabase_secret_key,
+    )
+
+
+def verify_referral_codes(
+    referral_code: str | None,
+    agent_code: str | None,
+) -> tuple[dict | None, dict | None]:
+    if not referral_code and not agent_code:
+        return None, None
+
+    try:
+        client = get_supabase_service_client()
+        photographer = None
+        agent = None
+
+        if referral_code:
+            result = (
+                client.table("profiles")
+                .select("id,role")
+                .eq("referral_code", referral_code)
+                .eq("role", "photographer")
+                .maybe_single()
+                .execute()
+            )
+            photographer = result.data
+            if not photographer:
+                raise HTTPException(
+                    400,
+                    "The photographer referral code was not found.",
+                )
+
+        if agent_code:
+            result = (
+                client.table("profiles")
+                .select("id,role")
+                .eq("agent_code", agent_code)
+                .eq("role", "agent")
+                .maybe_single()
+                .execute()
+            )
+            agent = result.data
+            if not agent:
+                raise HTTPException(400, "The agent code was not found.")
+
+        return photographer, agent
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Referral code verification failed.")
+        raise HTTPException(
+            503,
+            "Referral verification is temporarily unavailable.",
+        )
+
+
+def persist_referral_links(
+    user_id: str,
+    referring_photographer: dict | None,
+    referring_agent: dict | None,
+) -> None:
+    links = {}
+    if referring_photographer:
+        links["referred_by"] = referring_photographer["id"]
+    if referring_agent:
+        links["referred_by_agent"] = referring_agent["id"]
+
+    if not links:
+        return
+
+    try:
+        result = (
+            get_supabase_service_client()
+            .table("profiles")
+            .update(links)
+            .eq("id", user_id)
+            .select("id")
+            .execute()
+        )
+        if not result.data:
+            raise RuntimeError("The new account profile was not available.")
+    except Exception:
+        logger.exception("Verified referral links could not be saved for user_id=%s", user_id)
+        raise HTTPException(
+            503,
+            "The account was created, but its referral details could not be saved. Contact support.",
+        )
 
 
 def set_session_cookies(response: Response, session) -> None:
@@ -167,12 +265,19 @@ def register_account(payload: RegistrationRequest) -> dict:
     ):
         raise HTTPException(400, "The agent code format is invalid.")
 
+    referring_photographer, referring_agent = verify_referral_codes(
+        payload.referral_code,
+        payload.agent_code,
+    )
+
     metadata = {
         "account_type": payload.account_type,
         "full_name": payload.full_name,
         "display_name": payload.display_name,
         "referral_code": payload.referral_code,
         "agent_code": payload.agent_code,
+        "referred_by": referring_photographer["id"] if referring_photographer else None,
+        "referred_by_agent": referring_agent["id"] if referring_agent else None,
     }
 
     try:
@@ -185,6 +290,12 @@ def register_account(payload: RegistrationRequest) -> dict:
 
         if not result.user:
             raise HTTPException(400, "Registration could not be completed.")
+
+        persist_referral_links(
+            result.user.id,
+            referring_photographer,
+            referring_agent,
+        )
 
         confirmation_required = result.session is None
 

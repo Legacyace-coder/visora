@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_env: str = "development"
+    app_env: str = "production"
     app_name: str = "Photography Publishing API"
 
     frontend_origins: str = (

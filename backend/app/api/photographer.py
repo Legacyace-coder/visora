@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api import auth
 from app.core.security import require_roles
@@ -28,6 +28,18 @@ class CollectionCreate(BaseModel):
     title: str = Field(min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=3000)
 
+    @field_validator("title", mode="before")
+    @classmethod
+    def normalize_title(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def normalize_description(cls, value):
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
 
 class CollectionPhotoAttach(BaseModel):
     photo_id: UUID
@@ -39,6 +51,18 @@ class SubmissionCreate(BaseModel):
     cover_note: str | None = Field(default=None, max_length=5000)
     photo_ids: list[UUID] = Field(default_factory=list, max_length=100)
     collection_id: UUID | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def normalize_title(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("cover_note", mode="before")
+    @classmethod
+    def normalize_cover_note(cls, value):
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
 
 def get_user_client(request: Request):
@@ -73,6 +97,10 @@ def count_rows(client, table, owner_id, status=None) -> int:
     return result.count or 0
 
 
+def normalize_submission_status(status: str) -> str:
+    return "processing" if status == "under_review" else status
+
+
 def detect_image_type(content: bytes) -> tuple[str, str] | None:
     if content.startswith(b"\xff\xd8\xff"):
         return "image/jpeg", ".jpg"
@@ -103,7 +131,10 @@ def photographer_overview(
 
     submissions = count_rows(client, "submissions", owner_id)
     pending = count_rows(client, "submissions", owner_id, "pending")
-    under_review = count_rows(client, "submissions", owner_id, "under_review")
+    processing = (
+        count_rows(client, "submissions", owner_id, "processing")
+        + count_rows(client, "submissions", owner_id, "under_review")
+    )
     accepted = count_rows(client, "submissions", owner_id, "accepted")
     rejected = count_rows(client, "submissions", owner_id, "rejected")
 
@@ -119,7 +150,7 @@ def photographer_overview(
             "collections": collections,
             "submissions": submissions,
             "pending_submissions": pending,
-            "under_review_submissions": under_review,
+            "processing_submissions": processing,
             "accepted_submissions": accepted,
             "rejected_submissions": rejected,
         },
@@ -243,6 +274,9 @@ async def upload_photo(
     mime_type, extension = detected
     photo_id = str(uuid4())
     storage_path = f"{owner_id}/{photo_id}{extension}"
+    uploaded = False
+    clean_title = title.strip() if title else None
+    clean_description = description.strip() if description else None
 
     try:
         client.storage.from_(BUCKET).upload(
@@ -253,6 +287,7 @@ async def upload_photo(
                 "upsert": "false",
             },
         )
+        uploaded = True
 
         result = (
             client.table("photographer_photos")
@@ -263,8 +298,8 @@ async def upload_photo(
                 "original_filename": original_filename[:255],
                 "mime_type": mime_type,
                 "file_size_bytes": len(content),
-                "title": title.strip() if title else None,
-                "description": description.strip() if description else None,
+                "title": clean_title or None,
+                "description": clean_description or None,
             })
             .execute()
         )
@@ -276,10 +311,14 @@ async def upload_photo(
 
     except Exception:
         logging.exception("Photographer photo upload failed")
-        try:
-            client.storage.from_(BUCKET).remove([storage_path])
-        except Exception:
-            pass
+        if uploaded:
+            try:
+                client.storage.from_(BUCKET).remove([storage_path])
+            except Exception:
+                logging.exception(
+                    "Uploaded photo cleanup failed for storage_path=%s",
+                    storage_path,
+                )
 
         raise HTTPException(
             status_code=400,
@@ -300,7 +339,7 @@ def create_collection(
         .insert({
             "photographer_id": current_user["id"],
             "title": payload.title.strip(),
-            "description": payload.description.strip() if payload.description else None,
+            "description": payload.description,
         })
         .execute()
     )
@@ -364,16 +403,30 @@ def add_photo_to_collection(
     if not photo.data:
         raise HTTPException(status_code=404, detail="Photo not found.")
 
-    result = (
-        client.table("collection_photos")
-        .insert({
-            "collection_id": str(collection_id),
-            "photo_id": str(payload.photo_id),
-            "photographer_id": owner_id,
-        })
-        .execute()
-    )
+    try:
+        result = (
+            client.table("collection_photos")
+            .insert({
+                "collection_id": str(collection_id),
+                "photo_id": str(payload.photo_id),
+                "photographer_id": owner_id,
+            })
+            .execute()
+        )
+    except Exception as error:
+        logging.exception("Adding a photographer photo to a collection failed")
+        duplicate = getattr(error, "code", None) == "23505"
+        raise HTTPException(
+            status_code=409 if duplicate else 502,
+            detail=(
+                "The photo is already in this collection."
+                if duplicate
+                else "The photo could not be added. Please try again."
+            ),
+        )
 
+    if not result.data:
+        raise HTTPException(status_code=409, detail="The photo is already in this collection.")
     return {"message": "Photo added to collection.", "item": result.data[0]}
 
 
@@ -462,56 +515,36 @@ def create_submission(
                 detail="Add at least one photo to the collection before submitting it.",
             )
 
-    submission_result = (
-        client.table("submissions")
-        .insert({
-            "photographer_id": owner_id,
-            "submission_type": payload.submission_type,
-            "collection_id": (
-                str(payload.collection_id)
-                if payload.collection_id else None
-            ),
-            "title": payload.title.strip(),
-            "cover_note": payload.cover_note.strip() if payload.cover_note else None,
-        })
-        .execute()
-    )
-
-    if not submission_result.data:
-        raise HTTPException(status_code=400, detail="Submission could not be created.")
-
-    submission = submission_result.data[0]
-
     try:
-        client.table("submission_items").insert([
+        result = client.rpc(
+            "create_photographer_submission",
             {
-                "submission_id": submission["id"],
-                "photo_id": photo_id,
-                "photographer_id": owner_id,
-            }
-            for photo_id in photo_ids
-        ]).execute()
-
+                "p_photographer_id": owner_id,
+                "p_submission_type": payload.submission_type,
+                "p_collection_id": (
+                    str(payload.collection_id)
+                    if payload.collection_id else None
+                ),
+                "p_title": payload.title,
+                "p_cover_note": payload.cover_note,
+                "p_photo_ids": photo_ids,
+            },
+        ).execute()
     except Exception:
-        try:
-            (
-                client.table("submissions")
-                .delete()
-                .eq("id", submission["id"])
-                .eq("photographer_id", owner_id)
-                .eq("status", "pending")
-                .execute()
-            )
-        except Exception:
-            pass
-
+        logging.exception("Photographer submission transaction failed")
         raise HTTPException(
-            status_code=400,
-            detail="Submission items could not be saved. Please try again.",
+            status_code=502,
+            detail="The submission could not be saved. Please try again.",
+        )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=502,
+            detail="The submission could not be saved. Please try again.",
         )
 
     return {
-        "submission": submission,
+        "submission": result.data,
         "photo_count": len(photo_ids),
     }
 
@@ -535,4 +568,12 @@ def list_submissions(
         .execute()
     )
 
-    return {"submissions": result.data or []}
+    return {
+        "submissions": [
+            {
+                **submission,
+                "status": normalize_submission_status(submission["status"]),
+            }
+            for submission in (result.data or [])
+        ]
+    }
