@@ -50,11 +50,55 @@ document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carouse
     slides.forEach((slide, slideIndex) => { slide.hidden = slideIndex !== current; });
     status.textContent = `${current + 1} / ${slides.length}`;
   };
-  previous.addEventListener("click", () => showSlide(current - 1));
-  next.addEventListener("click", () => showSlide(current + 1));
+  const autoplayDelay = 7000;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let timer: number | undefined;
+  let paused = false;
+
+  const stop = (): void => {
+    window.clearInterval(timer);
+    timer = undefined;
+  };
+  const start = (): void => {
+    stop();
+    if (paused || reducedMotion.matches || document.hidden) return;
+    timer = window.setInterval(() => showSlide(current + 1), autoplayDelay);
+  };
+
+  previous.addEventListener("click", () => { showSlide(current - 1); start(); });
+  next.addEventListener("click", () => { showSlide(current + 1); start(); });
+  carousel.addEventListener("mouseenter", () => { paused = true; stop(); });
+  carousel.addEventListener("mouseleave", () => { paused = false; start(); });
+  carousel.addEventListener("focusin", () => { paused = true; stop(); });
+  carousel.addEventListener("focusout", () => { paused = false; start(); });
+  document.addEventListener("visibilitychange", start);
+  reducedMotion.addEventListener("change", start);
+
   showSlide(0);
   controls.hidden = false;
+  start();
 });
+
+// Scroll-reveal animation for the home page story sections and similar blocks.
+const revealTargets = document.querySelectorAll<HTMLElement>(
+  ".photo-stories-heading, .photo-stories-grid figure, .about-story, .feature-list article, .simple-callout, .intro, .gallery article, .collection-card"
+);
+if (revealTargets.length && "IntersectionObserver" in window &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  document.documentElement.classList.add("reveal-ready");
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-visible");
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+  revealTargets.forEach((element, index) => {
+    element.classList.add("reveal");
+    element.style.setProperty("--reveal-delay", `${(index % 3) * 120}ms`);
+    observer.observe(element);
+  });
+}
 
 const message = document.querySelector<HTMLElement>("#form-message");
 
