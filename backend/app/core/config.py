@@ -5,7 +5,9 @@ class Settings(BaseSettings):
     app_env: str = "production"
     app_name: str = "Photography Publishing API"
 
+    frontend_url: str = "https://visora-frontend-lx-a-nexus.vercel.app"
     frontend_origins: str = (
+        "https://visora-frontend-lx-a-nexus.vercel.app,"
         "http://127.0.0.1:5500,http://localhost:5500"
     )
 

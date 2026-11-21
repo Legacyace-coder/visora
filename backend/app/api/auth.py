@@ -287,7 +287,12 @@ def register_account(payload: RegistrationRequest) -> dict:
         result = client.auth.sign_up({
             "email": payload.email,
             "password": payload.password,
-            "options": {"data": metadata},
+            "options": {
+                "data": metadata,
+                "email_redirect_to": (
+                    f"{settings.frontend_url.rstrip('/')}/login.html"
+                ),
+            },
         })
 
         if not result.user:
