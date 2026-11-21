@@ -106,9 +106,10 @@ Availability and compliance must be validated before launch.
 
 Any processing fee must be disclosed separately, including its purpose, amount, recipient, timing and refund policy. Do not silently deduct it from withdrawal principal.
 
-The requested withdrawal policy is not implemented: each request must be at
+The withdrawal policy requires each request to be at
 least $15,000; a separately paid 25% fee is rounded to the nearest whole USD.
-It consists of a 15% withdrawal fee and a 10% company charge, not a tax.
+The 15% withdrawal fee is rounded to the nearest whole USD; the 10% company
+charge is the remainder of the rounded total. Neither is a tax.
 Non-partners pay for each withdrawal; partners pay again after a rejected,
 refunded request, and are exempt after their first successfully paid
 withdrawal. A rejected request requires a confirmed refund. Administrators

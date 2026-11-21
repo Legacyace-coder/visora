@@ -190,19 +190,25 @@ def photographer_overview(
 def list_photos(
     request: Request,
     current_user: dict = Depends(require_photographer),
+    offset: int = Query(default=0, ge=0),
 ):
     client = get_user_client(request)
 
     result = (
         client.table("photographer_photos")
-        .select(PHOTO_COLUMNS)
+        .select(PHOTO_COLUMNS, count="exact")
         .eq("photographer_id", current_user["id"])
         .order("created_at", desc=True)
-        .limit(100)
+        .order("id", desc=True)
+        .range(offset, offset + 100)
         .execute()
     )
 
-    return {"photos": result.data or []}
+    if result.count is None:
+        logging.error("Photographer portfolio returned no total count")
+        raise HTTPException(502, "Your portfolio could not be loaded.")
+    photos = result.data or []
+    return {"photos": photos[:100], "total": result.count, "has_more": len(photos) > 100}
 
 
 @router.get("/photos/{photo_id}/preview")

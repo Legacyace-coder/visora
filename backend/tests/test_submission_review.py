@@ -158,6 +158,41 @@ def test_photographer_submission_query_does_not_select_private_notes(monkeypatch
     assert result["submissions"][0]["photographer_feedback"] == "Visible feedback"
 
 
+def test_portfolio_paginates_and_reports_total(monkeypatch):
+    class Query:
+        def select(self, fields, count):
+            assert count == "exact"
+            return self
+
+        def eq(self, field, value):
+            assert (field, value) == ("photographer_id", "owner")
+            return self
+
+        def order(self, field, desc):
+            assert (field, desc) in (("created_at", True), ("id", True))
+            return self
+
+        def range(self, start, end):
+            assert (start, end) == (100, 200)
+            return self
+
+        def execute(self):
+            result = Result([{"id": str(i)} for i in range(101)])
+            result.count = 250
+            return result
+
+    class Client:
+        def table(self, name):
+            assert name == "photographer_photos"
+            return Query()
+
+    monkeypatch.setattr(photographer, "get_user_client", lambda request: Client())
+    result = photographer.list_photos(None, {"id": "owner"}, 100)
+    assert len(result["photos"]) == 100
+    assert result["total"] == 250
+    assert result["has_more"] is True
+
+
 def test_submission_history_has_next_page(monkeypatch):
     class Query:
         def select(self, fields):

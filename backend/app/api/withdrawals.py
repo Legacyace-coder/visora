@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.api import auth
 from app.api.admin import get_admin_client
@@ -14,10 +14,24 @@ router = APIRouter(tags=["Withdrawals"])
 logger = logging.getLogger(__name__)
 
 
-class WithdrawalRequest(BaseModel):
+class WithdrawalAmount(BaseModel):
     amount_cents: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
+
+    @field_validator("amount_cents")
+    @classmethod
+    def validate_amount(cls, value: str) -> str:
+        if int(value) > 9223372036854775807:
+            raise ValueError("Amount exceeds the supported withdrawal range.")
+        return value
+
+
+class WithdrawalRequest(WithdrawalAmount):
     method: str
     destination: str = Field(min_length=1, max_length=1000)
+    expected_fee_total_cents: str = Field(pattern=r"^(0|[1-9][0-9]{0,18})$")
+    expected_withdrawal_fee_cents: str = Field(pattern=r"^(0|[1-9][0-9]{0,18})$")
+    expected_company_charge_cents: str = Field(pattern=r"^(0|[1-9][0-9]{0,18})$")
+    expected_fee_recipient: str | None = Field(max_length=1000)
 
     @field_validator("method")
     @classmethod
@@ -32,12 +46,20 @@ class WithdrawalRequest(BaseModel):
     def normalize_destination(cls, value):
         return value.strip() if isinstance(value, str) else value
 
-    @field_validator("amount_cents")
+    @field_validator("expected_fee_total_cents", "expected_withdrawal_fee_cents", "expected_company_charge_cents")
     @classmethod
-    def validate_amount(cls, value: str) -> str:
+    def validate_expected_fee(cls, value: str) -> str:
         if int(value) > 9223372036854775807:
-            raise ValueError("Amount exceeds the supported withdrawal range.")
+            raise ValueError("Fee exceeds the supported withdrawal range.")
         return value
+
+
+class WithdrawalFeeQuote(BaseModel):
+    exempt: bool = Field(strict=True)
+    fee_total_cents: str = Field(pattern=r"^(0|[1-9][0-9]{0,18})$")
+    withdrawal_fee_cents: str = Field(pattern=r"^(0|[1-9][0-9]{0,18})$")
+    company_charge_cents: str = Field(pattern=r"^(0|[1-9][0-9]{0,18})$")
+    fee_recipient: str | None
 
 
 class ReceiptUpdate(BaseModel):
@@ -93,6 +115,10 @@ def execute_rpc(client, name: str, params: dict):
             raise HTTPException(403, "You cannot perform this action.") from error
         if code == "23505":
             raise HTTPException(409, "The withdrawal is already being processed.") from error
+        if code == "VQ001":
+            raise HTTPException(409, "The withdrawal fee has changed. Request a new quote.") from error
+        if code == "VQ002":
+            raise HTTPException(409, "The fee recipient is not configured. Contact Visora.") from error
         if code in {"22023", "23514", "23502"}:
             raise HTTPException(422, "The withdrawal request is not valid.") from error
         raise HTTPException(502, "The withdrawal operation could not be completed.") from error
@@ -103,7 +129,22 @@ def list_withdrawals(client, offset: int) -> dict:
     if not isinstance(result, list):
         logger.error("Withdrawal list returned an invalid response")
         raise HTTPException(502, "Withdrawals could not be loaded.")
-    return {"withdrawals": result[:25], "has_more": len(result) > 25}
+    records = []
+    for item in result[:25]:
+        if not isinstance(item, dict):
+            logger.error("Withdrawal list returned an invalid record")
+            raise HTTPException(502, "Withdrawals could not be loaded.")
+        record = dict(item)
+        for field in ("amount_cents", "withdrawal_fee_cents", "company_charge_cents", "fee_total_cents"):
+            value = record.get(field)
+            if value is None and field != "amount_cents":
+                continue
+            if (type(value) is not int and not isinstance(value, str)) or not str(value).isdigit():
+                logger.error("Withdrawal list returned an invalid %s", field)
+                raise HTTPException(502, "Withdrawals could not be loaded.")
+            record[field] = str(value)
+        records.append(record)
+    return {"withdrawals": records, "has_more": len(result) > 25}
 
 
 @router.get("/withdrawal-settings")
@@ -131,11 +172,38 @@ def create_withdrawal(
         "p_amount_cents": int(payload.amount_cents),
         "p_method": payload.method,
         "p_destination": payload.destination,
+        "p_expected_fee_total_cents": int(payload.expected_fee_total_cents),
+        "p_expected_withdrawal_fee_cents": int(payload.expected_withdrawal_fee_cents),
+        "p_expected_company_charge_cents": int(payload.expected_company_charge_cents),
+        "p_expected_fee_recipient": payload.expected_fee_recipient,
     })
     if not isinstance(request_id, str):
         logger.error("Withdrawal creation returned an invalid response")
-        raise HTTPException(502, "The withdrawal request could not be created.")
+        raise HTTPException(502, "The withdrawal request could not be confirmed. Refresh withdrawals before submitting again.")
     return {"id": request_id}
+
+
+@router.post("/photographer/withdrawals/fee-quote")
+def withdrawal_fee_quote(
+    payload: WithdrawalAmount,
+    request: Request,
+    current_user: dict = Depends(require_roles("photographer")),
+):
+    if current_user.get("suspended_at"):
+        raise HTTPException(403, "Your account is suspended.")
+    result = execute_rpc(get_user_client(request), "photographer_withdrawal_fee_quote", {
+        "p_amount_cents": int(payload.amount_cents),
+    })
+    try:
+        quote = WithdrawalFeeQuote.model_validate(result)
+        if (int(quote.fee_total_cents) != int(quote.withdrawal_fee_cents) + int(quote.company_charge_cents)
+                or int(quote.fee_total_cents) > 9223372036854775807
+                or (quote.exempt and quote.fee_total_cents != "0")):
+            raise ValueError("Invalid fee quote")
+    except (ValidationError, ValueError) as error:
+        logger.error("Withdrawal fee quote returned an invalid response: %s", error)
+        raise HTTPException(502, "The withdrawal fee could not be calculated.") from error
+    return quote
 
 
 @router.get("/photographer/withdrawals")

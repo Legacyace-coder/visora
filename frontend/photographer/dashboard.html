@@ -153,6 +153,7 @@
           <button id="photo-cleanup-button" class="button button-dark small" type="button">Retry pending original cleanup</button>
           <p id="photo-cleanup-status" role="status" aria-live="polite"></p>
           <div id="portfolio-grid" class="portfolio-grid"></div>
+          <button id="portfolio-more" class="button button-dark small" type="button" hidden>Load more photographs</button>
         </div>
       </div>
     </section>
@@ -193,6 +194,7 @@
 
       <section class="workspace-panel" aria-labelledby="collections-heading" data-dashboard-view>
         <h3 id="collections-heading">Collections</h3>
+        <p class="workspace-hint">The photograph selector includes the photos loaded in your portfolio. Load more there to add older work.</p>
         <form id="collection-create-form" class="workspace-form">
           <label for="collection-title">New collection</label>
           <input id="collection-title" name="title" maxlength="160" required>
@@ -253,7 +255,7 @@
           </select>
           <label for="withdrawal-destination">Destination</label>
           <textarea id="withdrawal-destination" name="destination" maxlength="1000" required></textarea>
-          <p class="workspace-hint">Minimum: $15,000. The separate fee is 25%: 15% withdrawal fee and 10% company charge. It is shown before submission and paid independently.</p>
+          <p class="workspace-hint">Minimum: $15,000. The separate fee is 25%: 15% withdrawal fee and 10% company charge. Eligible partners may be exempt. Your exact fee is shown before submission and paid independently.</p>
           <button class="button button-dark" type="submit">Request withdrawal</button>
           <p id="withdrawal-form-status" role="status" aria-live="polite"></p>
         </form>

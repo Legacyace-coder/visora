@@ -104,8 +104,12 @@ automatically.
 Withdrawals, separately paid withdrawal fees and audited account suspension are
 implemented through the latest migration. The minimum withdrawal is $15,000;
 the 25% advance fee is split into a 15% withdrawal fee and 10% company charge,
-with the nearest-whole-dollar rounding and partner exemption/return rules
-enforced by SQL. Administrators must configure a fee recipient and manually
+with the total rounded to the nearest whole dollar, the 15% portion rounded
+separately, and the 10% portion set to the remainder. Partner exemption/return
+rules are enforced by SQL. The fee is quoted before submission and checked
+again when the request is created. Apply the withdrawal-fee quote migration
+alongside the updated backend and frontend; existing requests keep their
+original fees. Administrators must configure a fee recipient and manually
 verify fee, payout and refund receipts. Suspended accounts retain read-only
 access and cannot submit mutations. Apply and test the migration and all
 authentication, permission and concurrent-withdrawal scenarios in staging before

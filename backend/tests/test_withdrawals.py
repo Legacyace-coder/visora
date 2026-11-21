@@ -59,6 +59,10 @@ def test_photographer_can_create_withdrawal(monkeypatch, client):
         "amount_cents": "1500000",
         "method": "USDT",
         "destination": "test-usdt-address",
+        "expected_fee_total_cents": "375000",
+        "expected_withdrawal_fee_cents": "225000",
+        "expected_company_charge_cents": "150000",
+        "expected_fee_recipient": "Example recipient",
     })
     assert response.status_code == 201
     assert response.json() == {"id": WITHDRAWAL_ID}
@@ -66,6 +70,10 @@ def test_photographer_can_create_withdrawal(monkeypatch, client):
         "p_amount_cents": 1500000,
         "p_method": "USDT",
         "p_destination": "test-usdt-address",
+        "p_expected_fee_total_cents": 375000,
+        "p_expected_withdrawal_fee_cents": 225000,
+        "p_expected_company_charge_cents": 150000,
+        "p_expected_fee_recipient": "Example recipient",
     })]
 
 
@@ -75,8 +83,95 @@ def test_suspended_photographer_cannot_create_withdrawal(monkeypatch, client):
         "amount_cents": "1500000",
         "method": "USDT",
         "destination": "test-usdt-address",
+        "expected_fee_total_cents": "375000",
+        "expected_withdrawal_fee_cents": "225000",
+        "expected_company_charge_cents": "150000",
+        "expected_fee_recipient": "Example recipient",
     })
     assert response.status_code == 403
+
+
+@pytest.mark.parametrize("role", ["admin", "agent"])
+def test_fee_quote_requires_photographer(monkeypatch, client, role):
+    set_role(monkeypatch, role)
+    assert client.post("/photographer/withdrawals/fee-quote", json={"amount_cents": "1500200"}).status_code == 403
+
+
+@pytest.mark.parametrize("exempt,total,withdrawal,company", [
+    (False, "375100", "225000", "150100"),
+    (True, "0", "0", "0"),
+])
+def test_fee_quote_returns_authoritative_amounts(monkeypatch, client, exempt, total, withdrawal, company):
+    set_role(monkeypatch, "photographer")
+    calls = []
+
+    def rpc(_client, name, params):
+        calls.append((name, params))
+        return {
+            "exempt": exempt, "fee_total_cents": total,
+            "withdrawal_fee_cents": withdrawal, "company_charge_cents": company, "fee_recipient": "Example recipient",
+        }
+
+    monkeypatch.setattr(withdrawals, "get_user_client", lambda request: object())
+    monkeypatch.setattr(withdrawals, "execute_rpc", rpc)
+    response = client.post("/photographer/withdrawals/fee-quote", json={"amount_cents": "1500200"})
+    assert response.status_code == 200
+    assert response.json() == {
+        "exempt": exempt, "fee_total_cents": total,
+        "withdrawal_fee_cents": withdrawal, "company_charge_cents": company, "fee_recipient": "Example recipient",
+    }
+    assert calls == [("photographer_withdrawal_fee_quote", {"p_amount_cents": 1500200})]
+
+
+def test_fee_quote_rejects_inconsistent_database_response(monkeypatch, client):
+    set_role(monkeypatch, "photographer")
+    monkeypatch.setattr(withdrawals, "get_user_client", lambda request: object())
+    monkeypatch.setattr(withdrawals, "execute_rpc", lambda *args: {
+        "exempt": True, "fee_total_cents": "100",
+        "withdrawal_fee_cents": "50", "company_charge_cents": "50", "fee_recipient": None,
+    })
+    assert client.post("/photographer/withdrawals/fee-quote", json={"amount_cents": "1500200"}).status_code == 502
+
+
+@pytest.mark.parametrize("code", ["VQ001", "VQ002"])
+def test_withdrawal_reports_changed_quote_or_missing_recipient(monkeypatch, client, code):
+    set_role(monkeypatch, "photographer")
+
+    class RpcError(Exception):
+        def __init__(self):
+            self.code = code
+
+    class Client:
+        def rpc(self, name, params):
+            raise RpcError()
+
+    monkeypatch.setattr(withdrawals, "get_user_client", lambda request: Client())
+    response = client.post("/photographer/withdrawals", json={
+        "amount_cents": "1500000", "method": "USDT", "destination": "test",
+        "expected_fee_total_cents": "375000", "expected_withdrawal_fee_cents": "225000",
+        "expected_company_charge_cents": "150000", "expected_fee_recipient": "Example recipient",
+    })
+    assert response.status_code == 409
+    assert ("changed" if code == "VQ001" else "not configured") in response.json()["detail"]
+
+
+def test_withdrawal_list_preserves_large_amount_precision(monkeypatch):
+    monkeypatch.setattr(withdrawals, "execute_rpc", lambda *args: [{
+        "amount_cents": 9223372036854775807,
+        "withdrawal_fee_cents": 225000, "company_charge_cents": 150000,
+        "fee_total_cents": 0,
+    }])
+    record = withdrawals.list_withdrawals(object(), 0)["withdrawals"][0]
+    assert record["amount_cents"] == "9223372036854775807"
+    assert record["fee_total_cents"] == "0"
+
+
+def test_withdrawal_requires_confirmed_fee_quote(monkeypatch, client):
+    set_role(monkeypatch, "photographer")
+    response = client.post("/photographer/withdrawals", json={
+        "amount_cents": "1500000", "method": "USDT", "destination": "test",
+    })
+    assert response.status_code == 422
 
 
 @pytest.mark.parametrize("role", ["photographer", "agent"])

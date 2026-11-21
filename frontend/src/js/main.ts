@@ -53,7 +53,8 @@ document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carouse
   const autoplayDelay = 7000;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   let timer: number | undefined;
-  let paused = false;
+  let hovered = false;
+  let focused = false;
 
   const stop = (): void => {
     window.clearInterval(timer);
@@ -61,16 +62,20 @@ document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carouse
   };
   const start = (): void => {
     stop();
-    if (paused || reducedMotion.matches || document.hidden) return;
+    if (hovered || focused || reducedMotion.matches || document.hidden) return;
     timer = window.setInterval(() => showSlide(current + 1), autoplayDelay);
   };
 
   previous.addEventListener("click", () => { showSlide(current - 1); start(); });
   next.addEventListener("click", () => { showSlide(current + 1); start(); });
-  carousel.addEventListener("mouseenter", () => { paused = true; stop(); });
-  carousel.addEventListener("mouseleave", () => { paused = false; start(); });
-  carousel.addEventListener("focusin", () => { paused = true; stop(); });
-  carousel.addEventListener("focusout", () => { paused = false; start(); });
+  carousel.addEventListener("mouseenter", () => { hovered = true; stop(); });
+  carousel.addEventListener("mouseleave", () => { hovered = false; start(); });
+  carousel.addEventListener("focusin", () => { focused = true; stop(); });
+  carousel.addEventListener("focusout", (event) => {
+    if (event.relatedTarget instanceof Node && carousel.contains(event.relatedTarget)) return;
+    focused = false;
+    start();
+  });
   document.addEventListener("visibilitychange", start);
   reducedMotion.addEventListener("change", start);
 
@@ -354,6 +359,8 @@ interface PhotographerSubmission {
 
 interface PhotographerPhotosResponse {
   photos: PhotographerPhoto[];
+  total: number;
+  has_more: boolean;
 }
 
 interface PhotographerCollectionsResponse {
@@ -1215,6 +1222,7 @@ interface Withdrawal {
   withdrawal_fee_cents: string | null;
   company_charge_cents: string | null;
   fee_total_cents: string | null;
+  fee_recipient: string | null;
   fee_receipt_reference: string | null;
   payout_receipt_reference: string | null;
   refund_receipt_reference: string | null;
@@ -1230,10 +1238,15 @@ function createPhotographerWithdrawalCard(withdrawal: Withdrawal): HTMLElement {
   const heading = document.createElement("h4");
   heading.textContent = `${formatUsdCents(withdrawal.amount_cents)} USD · ${withdrawal.status}`;
   const details = document.createElement("p");
-  details.textContent = `${withdrawal.method || "Method pending"} · Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`;
+  details.textContent = `${withdrawal.method || "Method pending"} · ${withdrawal.fee_total_cents === "0" ? "No fee required" : `Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`}`;
   const notice = document.createElement("p");
   notice.textContent = withdrawal.reviewer_notes ? `Review: ${withdrawal.reviewer_notes}` : "Wallet balances are not proof that a payout was sent.";
   card.append(heading, details, notice);
+  if (withdrawal.fee_total_cents !== "0") {
+    const recipient = document.createElement("p");
+    recipient.textContent = `Fee recipient: ${withdrawal.fee_recipient || "Not configured; contact Visora before paying."}`;
+    card.appendChild(recipient);
+  }
   return card;
 }
 
@@ -1249,18 +1262,47 @@ withdrawalForm?.addEventListener("submit", async (event) => {
   const submit = withdrawalForm.querySelector<HTMLButtonElement>('button[type="submit"]');
   if (!status || !submit) return;
   const data = new FormData(withdrawalForm);
+  let creatingRequest = false;
   submit.disabled = true;
-  status.textContent = "Submitting...";
+  status.textContent = "Calculating the fee...";
   try {
     const amount = String(data.get("amount_cents") || "");
-    if (!/^[1-9][0-9]*$/.test(amount) || BigInt(amount) < 1500000n) {
-      throw new Error("The minimum withdrawal is $15,000.");
+    if (!/^[1-9][0-9]{0,18}$/.test(amount) || BigInt(amount) < 1500000n || BigInt(amount) > 9223372036854775807n) {
+      throw new Error("Enter an amount of at least $15,000 within the supported range.");
     }
-    const fee = (BigInt(amount) * 25n + 5000n) / 10000n * 100n;
+    const quoteResponse = await fetch(`${apiBaseUrl}/photographer/withdrawals/fee-quote`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount_cents: amount }),
+    });
+    const quote = await quoteResponse.json() as ApiResult & {
+      exempt?: boolean; fee_total_cents?: string; withdrawal_fee_cents?: string; company_charge_cents?: string; fee_recipient?: string | null;
+    };
+    if (!quoteResponse.ok) throw new Error(typeof quote.detail === "string" ? quote.detail : "The withdrawal fee could not be calculated.");
+    if (typeof quote.exempt !== "boolean" ||
+        typeof quote.fee_total_cents !== "string" || !/^(0|[1-9][0-9]*)$/.test(quote.fee_total_cents) ||
+        typeof quote.withdrawal_fee_cents !== "string" || !/^(0|[1-9][0-9]*)$/.test(quote.withdrawal_fee_cents) ||
+        typeof quote.company_charge_cents !== "string" || !/^(0|[1-9][0-9]*)$/.test(quote.company_charge_cents) ||
+        (quote.fee_recipient !== null && typeof quote.fee_recipient !== "string") ||
+        BigInt(quote.fee_total_cents) !== BigInt(quote.withdrawal_fee_cents) + BigInt(quote.company_charge_cents) ||
+        (quote.exempt && quote.fee_total_cents !== "0")) {
+      throw new Error("The server returned an invalid fee quote.");
+    }
+    if (!quote.exempt && !quote.fee_recipient?.trim()) {
+      throw new Error("The fee recipient is not configured. Contact Visora before requesting a withdrawal.");
+    }
     const confirmFee = window.confirm(
-      `This request requires a separate ${formatUsdCents(fee.toString())} USD fee (15% withdrawal fee and 10% company charge). Submit the withdrawal request?`,
+      quote.exempt
+        ? "No separate fee is required for this withdrawal. Submit the withdrawal request?"
+        : `This request requires a separate ${formatUsdCents(quote.fee_total_cents)} USD fee: ${formatUsdCents(quote.withdrawal_fee_cents)} withdrawal fee and ${formatUsdCents(quote.company_charge_cents)} company charge.\n\nRecipient: ${quote.fee_recipient || "Not configured; contact Visora before paying."}\nThe fee is paid separately before payout and verified by an administrator. A paid fee must be refunded if the request is rejected.\n\nSubmit the withdrawal request?`,
     );
-    if (!confirmFee) return;
+    if (!confirmFee) {
+      status.textContent = "Withdrawal request cancelled.";
+      return;
+    }
+    creatingRequest = true;
+    status.textContent = "Submitting...";
     const response = await fetch(`${apiBaseUrl}/photographer/withdrawals`, {
       method: "POST",
       credentials: "include",
@@ -1269,15 +1311,35 @@ withdrawalForm?.addEventListener("submit", async (event) => {
         amount_cents: amount,
         method: data.get("method"),
         destination: data.get("destination"),
+        expected_fee_total_cents: quote.fee_total_cents,
+        expected_withdrawal_fee_cents: quote.withdrawal_fee_cents,
+        expected_company_charge_cents: quote.company_charge_cents,
+        expected_fee_recipient: quote.fee_recipient,
       }),
     });
-    const result = await response.json() as ApiResult;
-    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Withdrawal could not be requested.");
+    if (response.status === 408 || response.status >= 500) {
+      throw new Error("The request could not be confirmed. Refresh withdrawals before submitting again.");
+    }
+    let result: ApiResult & { id?: unknown };
+    try {
+      result = await response.json() as ApiResult & { id?: unknown };
+    } catch (error) {
+      console.error("Could not read the withdrawal response.", error);
+      throw new Error(response.ok
+        ? "The request could not be confirmed. Refresh withdrawals before submitting again."
+        : "Withdrawal could not be requested.");
+    }
+    if (!response.ok) throw new Error(result && typeof result.detail === "string" ? result.detail : "Withdrawal could not be requested.");
+    if (!result || typeof result.id !== "string" || !result.id) {
+      throw new Error("The request could not be confirmed. Refresh withdrawals before submitting again.");
+    }
     withdrawalForm.reset();
     status.textContent = "Withdrawal request submitted.";
     await Promise.all([loadWallet(), refreshPhotographerWithdrawals()]);
   } catch (error) {
-    status.textContent = error instanceof Error ? error.message : "Withdrawal could not be requested.";
+    status.textContent = creatingRequest && error instanceof TypeError
+      ? "The request could not be confirmed. Refresh withdrawals before submitting again."
+      : error instanceof Error ? error.message : "Withdrawal could not be requested.";
   } finally {
     submit.disabled = false;
   }
@@ -1844,18 +1906,28 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && document.querySelector("#weekly-target")) void loadWeeklyTarget();
 });
 
-async function loadPhotographerPortfolio(): Promise<void> {
+let photographerPortfolioRequest = 0;
+let photographerPortfolioOffset = 0;
+
+async function loadPhotographerPortfolio(append = false): Promise<void> {
   const status = document.querySelector<HTMLElement>("#portfolio-status");
   const grid = document.querySelector<HTMLElement>("#portfolio-grid");
   const count = document.querySelector<HTMLElement>("#portfolio-count");
+  const more = document.querySelector<HTMLButtonElement>("#portfolio-more");
 
-  if (!status || !grid || !count) return;
+  if (!status || !grid || !count || !more) return;
 
+  const requestId = ++photographerPortfolioRequest;
+  if (!append) {
+    photographerPortfolioOffset = 0;
+    grid.replaceChildren();
+    more.hidden = true;
+  }
+  more.disabled = true;
   status.textContent = "Loading your photographs...";
-  grid.replaceChildren();
 
   try {
-    const response = await fetch(`${apiBaseUrl}/photographer/photos`, {
+    const response = await fetch(`${apiBaseUrl}/photographer/photos?offset=${photographerPortfolioOffset}`, {
       method: "GET",
       credentials: "include",
     });
@@ -1863,6 +1935,7 @@ async function loadPhotographerPortfolio(): Promise<void> {
     const result = (await response.json()) as
       | PhotographerPhotosResponse
       | ApiResult;
+    if (requestId !== photographerPortfolioRequest) return;
 
     if (!response.ok) {
       const errorResult = result as ApiResult;
@@ -1871,18 +1944,18 @@ async function loadPhotographerPortfolio(): Promise<void> {
       );
     }
 
-    const photos = (result as PhotographerPhotosResponse).photos ?? [];
-    photographerPhotos = photos;
+    const { photos, total, has_more: hasMore } = result as PhotographerPhotosResponse;
+    if (!Array.isArray(photos) || !Number.isSafeInteger(total) || total < 0 || typeof hasMore !== "boolean") {
+      throw new Error("The server returned an invalid portfolio response.");
+    }
 
-    count.textContent = String(photos.length);
-
-    if (photos.length === 0) {
+    if (!append && photos.length === 0) {
+      photographerPhotos = [];
+      count.textContent = String(total);
       status.textContent = "Your portfolio is empty. Your uploaded photographs will appear here.";
       renderPhotographerCollections();
       return;
     }
-
-    status.textContent = `Showing ${photos.length} photograph${photos.length === 1 ? "" : "s"}.`;
 
     const cards = await Promise.all(
       photos.map(async (photo) => {
@@ -1911,18 +1984,33 @@ async function loadPhotographerPortfolio(): Promise<void> {
       })
     );
 
-    grid.replaceChildren(...cards);
+    if (requestId !== photographerPortfolioRequest) return;
+    photographerPortfolioOffset += photos.length;
+    photographerPhotos = append ? [...photographerPhotos, ...photos] : photos;
+    count.textContent = String(total);
+    status.textContent = `Showing ${photographerPhotos.length} of ${total} photographs.`;
+    more.hidden = !hasMore;
+    if (append) grid.append(...cards);
+    else grid.replaceChildren(...cards);
     renderPhotographerCollections();
   } catch (error) {
-    count.textContent = "—";
+    if (requestId !== photographerPortfolioRequest) return;
+    if (!append) count.textContent = "—";
     status.textContent =
       error instanceof Error
         ? error.message
         : "Your portfolio could not be loaded. Please try again.";
-    photographerPhotos = [];
-    renderPhotographerCollections();
+    if (!append) {
+      photographerPhotos = [];
+      renderPhotographerCollections();
+    }
+  } finally {
+    if (requestId === photographerPortfolioRequest) more.disabled = false;
   }
 }
+
+document.querySelector<HTMLButtonElement>("#portfolio-more")
+  ?.addEventListener("click", () => void loadPhotographerPortfolio(true));
 
 const photoUploadForm =
   document.querySelector<HTMLFormElement>("#photo-upload-form");
@@ -2576,79 +2664,124 @@ function createAdminWithdrawalCard(withdrawal: Withdrawal): HTMLElement {
   const heading = document.createElement("h3");
   heading.textContent = `${formatUsdCents(withdrawal.amount_cents)} USD · ${withdrawal.status}`;
   const details = document.createElement("p");
-  details.textContent = `${withdrawal.photographer_id || "Photographer"} · ${withdrawal.method || ""} · Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`;
+  const feeExempt = withdrawal.fee_total_cents === "0";
+  details.textContent = `${withdrawal.photographer_id || "Photographer"} · ${withdrawal.method || ""} · ${feeExempt ? "No fee required" : `Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`}`;
   const destination = document.createElement("p");
   destination.textContent = `Destination: ${withdrawal.destination || "Not provided"}`;
   card.append(heading, details, destination);
 
   if (withdrawal.status === "pending") {
+    const status = document.createElement("p");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
     const feeReceipt = document.createElement("input");
     feeReceipt.placeholder = "Fee receipt or verification reference";
+    feeReceipt.setAttribute("aria-label", "Fee receipt or verification reference");
     feeReceipt.maxLength = 1000;
     const verifyFee = document.createElement("button");
     verifyFee.type = "button";
     verifyFee.className = "button button-dark small";
     verifyFee.textContent = "Verify fee";
-    verifyFee.addEventListener("click", async () => {
-      if (!feeReceipt.value.trim()) return;
-      verifyFee.disabled = true;
-      await adminWithdrawalAction(
-        `/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/fee`,
-        { receipt_reference: feeReceipt.value.trim(), verified: true },
-      );
-      await refreshAdminWithdrawals();
-    });
 
     const payoutReceipt = document.createElement("input");
     payoutReceipt.placeholder = "Payout receipt reference";
+    payoutReceipt.setAttribute("aria-label", "Payout receipt reference");
     payoutReceipt.maxLength = 1000;
     const pay = document.createElement("button");
     pay.type = "button";
     pay.className = "button button-dark small";
     pay.textContent = "Record payout";
-    pay.addEventListener("click", async () => {
-      if (!payoutReceipt.value.trim()) return;
-      pay.disabled = true;
-      await adminWithdrawalAction(
-        `/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/pay`,
-        { payout_receipt_reference: payoutReceipt.value.trim() },
-      );
-      await refreshAdminWithdrawals();
-    });
 
     const rejectReason = document.createElement("input");
     rejectReason.placeholder = "Rejection reason";
+    rejectReason.setAttribute("aria-label", "Rejection reason");
     rejectReason.maxLength = 2000;
     const refundReceipt = document.createElement("input");
     refundReceipt.placeholder = "Refund receipt (required if fee was paid)";
+    refundReceipt.setAttribute("aria-label", "Refund receipt reference");
     refundReceipt.maxLength = 1000;
     const reject = document.createElement("button");
     reject.type = "button";
     reject.className = "button button-dark small";
     reject.textContent = "Reject";
-    reject.addEventListener("click", async () => {
-      if (!rejectReason.value.trim()) return;
-      reject.disabled = true;
-      await adminWithdrawalAction(
-        `/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/reject`,
-        { reason: rejectReason.value.trim(), refund_receipt_reference: refundReceipt.value.trim() || null },
-      );
-      await refreshAdminWithdrawals();
+
+    async function performAction(path: string, body: unknown): Promise<void> {
+      const buttons = [verifyFee, pay, reject];
+      buttons.forEach((button) => { button.disabled = true; });
+      status.textContent = "Saving...";
+      try {
+        await adminWithdrawalAction(path, body);
+        await refreshAdminWithdrawals();
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Withdrawal action could not be saved.";
+      } finally {
+        buttons.forEach((button) => { button.disabled = false; });
+      }
+    }
+
+    verifyFee.addEventListener("click", () => {
+      if (!feeReceipt.value.trim()) {
+        status.textContent = "Enter a fee receipt reference.";
+        return;
+      }
+      void performAction(`/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/fee`,
+        { receipt_reference: feeReceipt.value.trim(), verified: true });
     });
-    card.append(feeReceipt, verifyFee, payoutReceipt, pay, rejectReason, refundReceipt, reject);
+    pay.addEventListener("click", () => {
+      if (!payoutReceipt.value.trim()) {
+        status.textContent = "Enter a payout receipt reference.";
+        return;
+      }
+      void performAction(`/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/pay`,
+        { payout_receipt_reference: payoutReceipt.value.trim() });
+    });
+    reject.addEventListener("click", () => {
+      if (!rejectReason.value.trim()) {
+        status.textContent = "Enter a rejection reason.";
+        return;
+      }
+      if (["paid", "verified"].includes(withdrawal.fee_status) && !refundReceipt.value.trim()) {
+        status.textContent = "Enter a refund receipt reference for the paid fee.";
+        return;
+      }
+      void performAction(`/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/reject`,
+        { reason: rejectReason.value.trim(), refund_receipt_reference: refundReceipt.value.trim() || null });
+    });
+    if (!feeExempt) card.append(feeReceipt, verifyFee);
+    card.append(payoutReceipt, pay, rejectReason, refundReceipt, reject, status);
   }
   return card;
 }
 
 async function adminWithdrawalAction(path: string, body: unknown): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const result = await response.json() as ApiResult;
-  if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Withdrawal action could not be saved.");
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    console.error("Withdrawal action connection failed.", error);
+    throw new Error("The action could not be confirmed. Refresh withdrawals before trying again.");
+  }
+  if (response.status === 408 || response.status >= 500) {
+    throw new Error("The action could not be confirmed. Refresh withdrawals before trying again.");
+  }
+  let result: ApiResult;
+  try {
+    result = await response.json() as ApiResult;
+  } catch (error) {
+    console.error("Could not read the withdrawal action response.", error);
+    throw new Error(response.ok
+      ? "The action could not be confirmed. Refresh withdrawals before trying again."
+      : "Withdrawal action could not be saved.");
+  }
+  if (!response.ok) throw new Error(result && typeof result.detail === "string" ? result.detail : "Withdrawal action could not be saved.");
+  if (!result || typeof result.message !== "string" || !result.message) {
+    throw new Error("The action could not be confirmed. Refresh withdrawals before trying again.");
+  }
 }
 
 const refreshAdminWithdrawals = setupPagedList<Withdrawal>(
