@@ -16,6 +16,7 @@
   <nav aria-label="Main navigation">
     <a href="/">Home</a>
     <a href="/collection.html">Collection</a>
+    <a href="/gallery.html">Gallery</a>
     <a href="/photographers.html" aria-current="page">Photographers</a>
     <a href="/about.html">About</a>
   </nav>
@@ -33,6 +34,12 @@
     <div class="hero-actions">
       <a class="button button-dark" href="/register.html">Create an account</a>
       <a class="underlined" href="/login.html">Already a member? Sign in</a>
+    </div>
+    <div class="photo-carousel page-carousel" data-photo-carousel role="region" aria-roledescription="carousel" aria-label="Photography and the people behind it">
+      <figure class="photo-slide" data-photo-slide><img src="/images/photographers-hero.jpg" alt="Silhouette of a photographer holding a camera" loading="lazy"><figcaption>YOUR PERSPECTIVE</figcaption></figure>
+      <figure class="photo-slide" data-photo-slide hidden><img src="/images/photographer-workspace.jpg" alt="A camera and laptop in a warmly lit workspace" loading="lazy"><figcaption>YOUR WORKSPACE</figcaption></figure>
+      <figure class="photo-slide" data-photo-slide hidden><img src="/images/collection-editorial.jpg" alt="Cameras and photographic contact sheets arranged on a table" loading="lazy"><figcaption>YOUR PROCESS</figcaption></figure>
+      <div class="photo-carousel-controls" data-carousel-controls hidden><button type="button" data-carousel-prev aria-label="Previous photograph">←</button><span data-carousel-status aria-live="polite"></span><button type="button" data-carousel-next aria-label="Next photograph">→</button></div>
     </div>
   </section>
 

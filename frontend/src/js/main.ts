@@ -36,6 +36,26 @@ if (year) {
   year.textContent = String(new Date().getFullYear());
 }
 
+document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carousel) => {
+  const slides = Array.from(carousel.querySelectorAll<HTMLElement>("[data-photo-slide]"));
+  const controls = carousel.querySelector<HTMLElement>("[data-carousel-controls]");
+  const previous = carousel.querySelector<HTMLButtonElement>("[data-carousel-prev]");
+  const next = carousel.querySelector<HTMLButtonElement>("[data-carousel-next]");
+  const status = carousel.querySelector<HTMLElement>("[data-carousel-status]");
+  if (slides.length < 2 || !controls || !previous || !next || !status) return;
+
+  let current = 0;
+  const showSlide = (index: number): void => {
+    current = (index + slides.length) % slides.length;
+    slides.forEach((slide, slideIndex) => { slide.hidden = slideIndex !== current; });
+    status.textContent = `${current + 1} / ${slides.length}`;
+  };
+  previous.addEventListener("click", () => showSlide(current - 1));
+  next.addEventListener("click", () => showSlide(current + 1));
+  showSlide(0);
+  controls.hidden = false;
+});
+
 const message = document.querySelector<HTMLElement>("#form-message");
 
 function dashboardPath(role: AccountRole): string {
@@ -2456,6 +2476,49 @@ const dashboard = document.querySelector<HTMLElement>(
 );
 
 if (dashboard) {
+  const views = Array.from(dashboard.querySelectorAll<HTMLElement>("[data-dashboard-view]"));
+  const navigation = dashboard.querySelector<HTMLElement>(".dashboard-nav");
+  const links = Array.from(navigation?.querySelectorAll<HTMLAnchorElement>('a[href^="#"]') || []);
+  const portfolioSelection = document.querySelector<HTMLElement>("#portfolio-photo-selection");
+  const portfolioHome = document.querySelector<HTMLElement>("#portfolio-photo-home");
+  const submissionSelection = document.querySelector<HTMLElement>("#submission-photo-selection");
+
+  function showDashboardView(focusHeading = false): void {
+    let target: HTMLElement | null = null;
+    try {
+      target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+    } catch {
+      target = null;
+    }
+    const view = target?.closest<HTMLElement>("[data-dashboard-view]") || views[0];
+    if (!view) return;
+    if (portfolioSelection && portfolioHome && submissionSelection) {
+      (view.contains(submissionSelection) ? submissionSelection : portfolioHome).appendChild(portfolioSelection);
+    }
+    views.forEach((section) => { section.hidden = section !== view; });
+    links.forEach((link) => {
+      const linkTarget = document.getElementById(link.hash.slice(1));
+      if (linkTarget?.closest("[data-dashboard-view]") === view) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+    if (focusHeading) {
+      const heading = view.querySelector<HTMLElement>("h1, h2, h3");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    }
+  }
+
+  showDashboardView();
+  window.addEventListener("hashchange", () => {
+    showDashboardView(true);
+    window.scrollTo(0, 0);
+  });
+
   void (async () => {
     const requiredRole = dashboard.dataset.requiredRole as AccountRole;
     const user = await getSessionUser();

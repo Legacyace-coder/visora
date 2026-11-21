@@ -33,7 +33,7 @@
       <a href="#partnership-heading">Partnership</a>
     </nav>
     <div class="dashboard-content">
-    <section class="dashboard-welcome" id="overview">
+    <section class="dashboard-welcome" id="overview" data-dashboard-view>
       <p class="eyebrow">PHOTOGRAPHER WORKSPACE</p>
       <h1>Welcome back,<br><span id="dashboard-name">there</span>.</h1>
       <p class="lead">Your photography workspace at a glance.</p>
@@ -50,8 +50,9 @@
       <p id="overview-status" role="status" aria-live="polite"></p>
     </section>
 
-    <section class="dashboard-account" id="account">
+    <section class="dashboard-account" id="account" data-dashboard-view>
       <p class="eyebrow">ACCOUNT DETAILS</p>
+      <h2>Account settings</h2>
       <img id="profile-photo" class="profile-photo" alt="Your profile photo" hidden>
       <form id="profile-photo-form" class="workspace-form">
         <label for="profile-photo-file">Profile photo (JPEG, PNG or WebP, up to 2 MB)</label>
@@ -102,7 +103,7 @@
       </form>
     </section>
 
-    <section class="portfolio-section" aria-labelledby="portfolio-heading">
+    <section class="portfolio-section" aria-labelledby="portfolio-heading" data-dashboard-view>
       <div class="portfolio-heading">
         <div>
           <p class="eyebrow">YOUR PHOTOGRAPHY</p>
@@ -118,7 +119,19 @@
         </div>
       </div>
 
-      <section class="workspace-panel" aria-labelledby="upload-heading">
+      <div id="portfolio-photo-home">
+        <div id="portfolio-photo-selection">
+          <p id="portfolio-status" class="portfolio-status" role="status" aria-live="polite">
+            Loading your photographs...
+          </p>
+          <button id="photo-cleanup-button" class="button button-dark small" type="button">Retry pending original cleanup</button>
+          <p id="photo-cleanup-status" role="status" aria-live="polite"></p>
+          <div id="portfolio-grid" class="portfolio-grid"></div>
+        </div>
+      </div>
+    </section>
+
+      <section class="workspace-panel" aria-labelledby="upload-heading" data-dashboard-view>
         <h3 id="upload-heading">Add to your portfolio</h3>
         <form id="photo-upload-form" class="workspace-form">
           <label for="photo-file">Photograph</label>
@@ -144,7 +157,7 @@
         </form>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="collections-heading">
+      <section class="workspace-panel" aria-labelledby="collections-heading" data-dashboard-view>
         <h3 id="collections-heading">Collections</h3>
         <form id="collection-create-form" class="workspace-form">
           <label for="collection-title">New collection</label>
@@ -157,7 +170,7 @@
         <div id="collection-list" class="collection-list" aria-live="polite"></div>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="submission-heading">
+      <section class="workspace-panel" aria-labelledby="submission-heading" data-dashboard-view>
         <h3 id="submission-heading">Submit work for review</h3>
         <form id="individual-submission-form" class="workspace-form">
           <label for="individual-submission-title">Submission title</label>
@@ -180,17 +193,10 @@
           <button class="button button-dark" type="submit">Submit collection</button>
           <p id="collection-submission-status" role="status" aria-live="polite"></p>
         </form>
+        <div id="submission-photo-selection"></div>
       </section>
 
-      <p id="portfolio-status" class="portfolio-status" role="status" aria-live="polite">
-        Loading your photographs...
-      </p>
-      <button id="photo-cleanup-button" class="button button-dark small" type="button">Retry pending original cleanup</button>
-      <p id="photo-cleanup-status" role="status" aria-live="polite"></p>
-
-      <div id="portfolio-grid" class="portfolio-grid"></div>
-
-      <section class="workspace-panel" aria-labelledby="submission-history-heading">
+      <section class="workspace-panel" aria-labelledby="submission-history-heading" data-dashboard-view>
         <h3 id="submission-history-heading">Submission history</h3>
         <p class="workspace-hint">Refresh to see the latest review.</p>
         <button id="submission-refresh" class="button button-dark small" type="button">Refresh submissions</button>
@@ -198,7 +204,7 @@
         <button id="submission-more" class="button button-dark small" type="button" hidden>Load more submissions</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="wallet-heading">
+      <section class="workspace-panel" aria-labelledby="wallet-heading" data-dashboard-view>
         <h3 id="wallet-heading">Wallet</h3>
         <p id="wallet-status" role="status" aria-live="polite">Loading wallet...</p>
         <p class="workspace-hint">Wallet credits are not confirmation that a withdrawal has been paid.</p>
@@ -223,7 +229,7 @@
         <button id="withdrawals-more" class="button button-dark small" type="button" hidden>Load more withdrawals</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="offers-heading">
+      <section class="workspace-panel" aria-labelledby="offers-heading" data-dashboard-view>
         <h3 id="offers-heading">Acquisition offers and history</h3>
         <button id="photographer-offers-refresh" class="button button-dark small" type="button">Refresh offers</button>
         <p id="photographer-offers-status" role="status" aria-live="polite"></p>
@@ -231,7 +237,7 @@
         <button id="photographer-offers-more" class="button button-dark small" type="button" hidden>Load more offers</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="publications-heading">
+      <section class="workspace-panel" aria-labelledby="publications-heading" data-dashboard-view>
         <h3 id="publications-heading">Publication history</h3>
         <button id="photographer-publications-refresh" class="button button-dark small" type="button">Refresh publications</button>
         <p id="photographer-publications-status" role="status" aria-live="polite"></p>
@@ -239,7 +245,7 @@
         <button id="photographer-publications-more" class="button button-dark small" type="button" hidden>Load more publications</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="partnership-heading">
+      <section class="workspace-panel" aria-labelledby="partnership-heading" data-dashboard-view>
         <h3 id="partnership-heading">Partnership verification</h3>
         <p class="workspace-hint">Submit either your purchased card code or an image of the card. Administrators can view it for manual review; records are retained for audit.</p>
         <form id="partnership-form" class="workspace-form">
@@ -255,7 +261,6 @@
         <div id="photographer-partnerships" class="submission-list"></div>
         <button id="photographer-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
       </section>
-    </section>
     </div>
     </div>
 

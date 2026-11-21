@@ -25,14 +25,15 @@
       <a href="#referrals">Referrals</a>
     </nav>
     <div class="dashboard-content">
-    <section class="dashboard-welcome" id="overview">
+    <section class="dashboard-welcome" id="overview" data-dashboard-view>
       <p class="eyebrow">AGENT WORKSPACE</p>
       <h1>Welcome back,<br><span id="dashboard-name">there</span>.</h1>
       <p class="lead">Your agent account and referral code.</p>
     </section>
 
-    <section class="dashboard-account" id="account">
+    <section class="dashboard-account" id="account" data-dashboard-view>
       <p class="eyebrow">ACCOUNT DETAILS</p>
+      <h2>Account settings</h2>
       <img id="profile-photo" class="profile-photo" alt="Your profile photo" hidden>
       <form id="profile-photo-form" class="workspace-form">
         <label for="profile-photo-file">Profile photo (JPEG, PNG or WebP, up to 2 MB)</label>
@@ -83,7 +84,7 @@
       </form>
     </section>
 
-    <section class="dashboard-notice" id="referrals">
+    <section class="dashboard-notice" id="referrals" data-dashboard-view>
       <p class="eyebrow">REFERRALS</p>
       <h2>Referral activity</h2>
       <p>Counts show photographers registered with your agent code. Commissions are not enabled.</p>

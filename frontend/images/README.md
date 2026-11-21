@@ -34,5 +34,6 @@ Use the exact filenames shown below (lowercase, hyphen-separated).
 - Use JPG for photographs; aim for 1600–2400 px on the long edge.
 - Compress images for the web (ideally around 200–500 KB each where quality permits).
 - Keep the photographer-submitted portfolio images out of this folder. Those remain user uploads.
+- Public-page slides use these assets as editorial imagery, not as published gallery works. Verify ownership and commercial-use rights for each image before deployment.
 
 Missing files will show a designed neutral placeholder until you add the corresponding image.

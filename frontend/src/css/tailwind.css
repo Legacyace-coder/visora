@@ -1268,3 +1268,264 @@ html {
     width: 96px;
   }
 }
+
+/* Photography-led public pages */
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 7%;
+  padding-top: 65px;
+  padding-bottom: 65px;
+}
+
+.home-hero-copy .lead {
+  max-width: 500px;
+  font-size: 15px;
+}
+
+.photo-carousel {
+  min-width: 0;
+  background: #d7d5cc;
+}
+
+.photo-slide {
+  margin: 0;
+}
+
+.photo-slide img {
+  display: block;
+  width: 100%;
+  height: clamp(350px, 42vw, 610px);
+  object-fit: cover;
+  object-position: center 45%;
+}
+
+.photo-slide figcaption {
+  padding: 14px 18px 0;
+  color: #55544d;
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+
+.photo-carousel-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px 16px;
+}
+
+.photo-carousel-controls button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #77766e;
+  border-radius: 50%;
+  color: #191916;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.photo-carousel-controls button:hover,
+.photo-carousel-controls button:focus-visible {
+  color: #fff;
+  background: #191916;
+}
+
+.photo-carousel-controls span {
+  min-width: 44px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.page-carousel {
+  max-width: 100%;
+  margin-top: 48px;
+}
+
+.page-carousel .photo-slide img {
+  height: clamp(280px, 40vw, 500px);
+}
+
+.photo-stories {
+  padding: 90px 8%;
+}
+
+.photo-stories-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.photo-stories-heading h2 {
+  margin: 0;
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 500;
+  letter-spacing: -.06em;
+}
+
+.photo-stories-heading > p {
+  max-width: 280px;
+  color: #68675f;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.photo-stories-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 18px;
+}
+
+.photo-stories-grid figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.photo-stories-grid img {
+  display: block;
+  width: 100%;
+  height: clamp(260px, 35vw, 480px);
+  object-fit: cover;
+}
+
+.photo-stories-grid figcaption {
+  padding-top: 12px;
+  color: #68675f;
+  font-size: 9px;
+  letter-spacing: .13em;
+}
+
+.auth-visual {
+  margin: 28px 0 0;
+  background: #d7d5cc;
+}
+
+.auth-visual img {
+  display: block;
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
+
+.auth-visual figcaption {
+  padding: 12px 15px;
+  color: #55544d;
+  font-size: 9px;
+  letter-spacing: .14em;
+}
+
+@media (min-width: 800px) {
+  .auth-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .75fr);
+    column-gap: 7%;
+    align-content: start;
+  }
+
+  .auth-page > .brand-logo,
+  .auth-page > .auth {
+    grid-column: 1;
+  }
+
+  .auth-visual {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    margin: 0;
+  }
+
+  .auth-visual img {
+    height: calc(100vh - 110px);
+    min-height: 480px;
+  }
+}
+
+/* Each workspace navigation item opens one view. */
+.dashboard-content {
+  min-height: 65vh;
+}
+
+.dashboard-content > .workspace-panel {
+  padding: 65px 0 80px;
+  border-top: 0;
+}
+
+.dashboard-account h2 {
+  margin: 0 0 24px;
+  font-size: clamp(32px, 5vw, 46px);
+  font-weight: 500;
+  letter-spacing: -.06em;
+}
+
+.dashboard-nav {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.dashboard-nav a[aria-current="page"] {
+  color: #fff;
+  background: #191916;
+  font-weight: 700;
+}
+
+#submission-photo-selection {
+  margin-top: 35px;
+}
+
+@media (max-width: 760px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .home-hero .photo-slide img {
+    height: min(105vw, 540px);
+  }
+
+  .photo-stories {
+    padding: 65px 7%;
+  }
+
+  .photo-stories-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photo-stories-grid figure:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-nav {
+    flex-wrap: nowrap;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 12px;
+  }
+
+  .dashboard-nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .dashboard-content > .workspace-panel {
+    padding-top: 40px;
+  }
+
+  .photo-stories-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .photo-stories-grid img {
+    height: 58vw;
+  }
+
+  .photo-stories-grid figure:last-child img {
+    height: 65vw;
+  }
+}
