@@ -28,9 +28,20 @@ No React.
     npm install
     npm run build
 
-To preview the built frontend:
+To preview the built frontend locally, use the same hostname and port as the
+backend's default CORS configuration:
 
-    npx serve dist
+    cd frontend
+    py -m http.server 5500 --bind 127.0.0.1 --directory dist
+
+Open <http://127.0.0.1:5500>. Sign-in and registration also require the
+backend to be running in a separate terminal, with the Supabase settings in
+`backend/.env` configured. If using a different preview origin, add its exact
+URL to `FRONTEND_ORIGINS` in `backend/.env` and restart the backend. Use the
+same hostname for the preview and API so session cookies work.
+
+The appearance toggle follows the device theme until a visitor chooses light or
+dark mode. Their choice is saved in browser storage across Visora pages.
 
 ## Backend Setup
 

@@ -7,12 +7,13 @@
   <title>Visora | Photography, Considered</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/images/visora-inc-favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/images/visora-inc-favicon-180.png">
+  <script src="/assets/js/theme.js"></script>
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
 
 <header class="site-header">
-  <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+  <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
 
   <nav aria-label="Main navigation">
     <a href="/" aria-current="page">Home</a>
@@ -25,6 +26,7 @@
   <div class="header-actions">
     <a href="/login.html">Sign in</a>
     <a class="button button-dark small" href="/register.html">Join Visora</a>
+    <button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button>
   </div>
 </header>
 
@@ -52,12 +54,12 @@
         <figcaption>01 / THE PEOPLE BEHIND THE IMAGE</figcaption>
       </figure>
       <figure class="photo-slide" data-photo-slide hidden>
-        <img src="/images/home-story-photographer.jpg" alt="Photographer holding a camera at their side" loading="lazy">
-        <figcaption>02 / A DIFFERENT PERSPECTIVE</figcaption>
+        <img src="/images/image%201.jpg" alt="Camera surrounded by landscape prints" loading="lazy">
+        <figcaption>02 / THE IMAGES WE MAKE</figcaption>
       </figure>
       <figure class="photo-slide" data-photo-slide hidden>
-        <img src="/images/collection-editorial.jpg" alt="Cameras and photographic contact sheets arranged on a table" loading="lazy">
-        <figcaption>03 / STORIES IN THE MAKING</figcaption>
+        <img src="/images/image%203.jpg" alt="Camera and photographs of a forest arranged on a table" loading="lazy">
+        <figcaption>03 / THE STORIES WE KEEP</figcaption>
       </figure>
       <div class="photo-carousel-controls" data-carousel-controls hidden>
         <button type="button" data-carousel-prev aria-label="Previous photograph">←</button>
@@ -74,8 +76,8 @@
     </div>
     <div class="photo-stories-grid">
       <figure><img src="/images/home-story-photographer.jpg" alt="Photographer carrying a camera" loading="lazy"><figcaption>THE PHOTOGRAPHER / THE PERSPECTIVE</figcaption></figure>
-      <figure><img src="/images/collection-editorial.jpg" alt="Cameras and portrait contact sheets" loading="lazy"><figcaption>THE PROCESS / THE DETAILS</figcaption></figure>
-      <figure><img src="/images/photographer-workspace.jpg" alt="A camera and laptop in a warmly lit workspace" loading="lazy"><figcaption>THE WORK / THE STORY</figcaption></figure>
+      <figure><img src="/images/image%2010.jpg" alt="Person arranging photographic prints and albums" loading="lazy"><figcaption>THE PROCESS / THE DETAILS</figcaption></figure>
+      <figure><img src="/images/image%206.jpg" alt="Instant photographs of a portrait, coastline and flowers" loading="lazy"><figcaption>THE WORK / THE STORY</figcaption></figure>
     </div>
   </section>
 
@@ -144,7 +146,7 @@
 </main>
 
 <footer class="site-footer">
-  <a class="wordmark brand-logo brand-logo-light" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"></a>
+  <a class="wordmark brand-logo brand-logo-light" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
   <p>Photography, considered.</p>
 
   <div class="footer-links">

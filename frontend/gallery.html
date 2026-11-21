@@ -6,11 +6,12 @@
   <meta name="api-base-url" content="http://127.0.0.1:8000">
   <title>Gallery | Visora</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/images/visora-inc-favicon-32.png">
+  <script src="/assets/js/theme.js"></script>
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+    <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
     <nav aria-label="Main navigation">
       <a href="/">Home</a>
       <a href="/collection.html">Collection</a>
@@ -18,7 +19,7 @@
       <a href="/photographers.html">Photographers</a>
       <a href="/about.html">About</a>
     </nav>
-    <div class="header-actions"><a href="/login.html">Sign in</a></div>
+    <div class="header-actions"><a href="/login.html">Sign in</a><button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button></div>
   </header>
   <main class="inner-page">
     <section class="page-hero">
@@ -26,9 +27,8 @@
       <h1>Photography,<br><em>shared.</em></h1>
       <p class="lead">Works shared with permission from their photographers.</p>
       <div class="photo-carousel page-carousel" data-photo-carousel role="region" aria-roledescription="carousel" aria-label="Editorial imagery about photography">
-        <figure class="photo-slide" data-photo-slide><img src="/images/collection-editorial.jpg" alt="Cameras and photographic contact sheets arranged on a table" loading="lazy"><figcaption>EDITORIAL IMAGERY / BEHIND THE LENS</figcaption></figure>
-        <figure class="photo-slide" data-photo-slide hidden><img src="/images/photographers-hero.jpg" alt="Silhouette of a photographer holding a camera" loading="lazy"><figcaption>EDITORIAL IMAGERY / THE PHOTOGRAPHER</figcaption></figure>
-        <figure class="photo-slide" data-photo-slide hidden><img src="/images/photographer-workspace.jpg" alt="A camera and laptop in a warmly lit workspace" loading="lazy"><figcaption>EDITORIAL IMAGERY / THE WORKSPACE</figcaption></figure>
+        <figure class="photo-slide" data-photo-slide><img src="/images/image%207.jpg" alt="Cameras, film and portrait photographs arranged on a table" loading="lazy"><figcaption>EDITORIAL IMAGERY / BEHIND THE LENS</figcaption></figure>
+        <figure class="photo-slide" data-photo-slide hidden><img src="/images/image%208.jpg" alt="Cameras and instant portraits arranged on a wooden surface" loading="lazy"><figcaption>EDITORIAL IMAGERY / PORTRAITS</figcaption></figure>
         <div class="photo-carousel-controls" data-carousel-controls hidden><button type="button" data-carousel-prev aria-label="Previous photograph">←</button><span data-carousel-status aria-live="polite"></span><button type="button" data-carousel-next aria-label="Next photograph">→</button></div>
       </div>
     </section>

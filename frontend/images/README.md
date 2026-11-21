@@ -5,6 +5,7 @@ Use the exact filenames shown below (lowercase, hyphen-separated).
 
 ## Public pages
 
+- `image 1.jpg` through `image 10.jpg` — additional editorial photography used across the public pages.
 - `home-hero-editorial.jpg` — wide editorial hero photograph; architecture, landscape or a striking visual scene.
 - `home-story-photographer.jpg` — photographer actively making an image.
 - `home-portfolio-feature.jpg` — fine-art or editorial photography portfolio / print.

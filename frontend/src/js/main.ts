@@ -58,6 +58,19 @@ document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carouse
 
 const message = document.querySelector<HTMLElement>("#form-message");
 
+async function authenticationRequest(path: string, options: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${apiBaseUrl}${path}`, options);
+  } catch (error) {
+    console.error("Authentication request failed.", error);
+    throw new Error(
+      isLocalDevelopment
+        ? "Cannot reach the authentication service. Start the backend and check the allowed frontend origin."
+        : "Cannot reach the authentication service. Please try again later."
+    );
+  }
+}
+
 function dashboardPath(role: AccountRole): string {
   const paths: Record<AccountRole, string> = {
     photographer: "/photographer/dashboard.html",
@@ -175,7 +188,7 @@ registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
   }
 
   try {
-    const response = await fetch(`${apiBaseUrl}/auth/register`, {
+    const response = await authenticationRequest("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -231,7 +244,7 @@ loginForm?.addEventListener("submit", async (event: SubmitEvent) => {
   }
 
   try {
-    const response = await fetch(`${apiBaseUrl}/auth/login`, {
+    const response = await authenticationRequest("/auth/login", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

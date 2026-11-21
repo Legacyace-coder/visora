@@ -7,12 +7,13 @@
   <title>About Visora</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/images/visora-inc-favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/images/visora-inc-favicon-180.png">
+  <script src="/assets/js/theme.js"></script>
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
 
 <header class="site-header">
-  <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+  <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
   <nav aria-label="Main navigation">
     <a href="/">Home</a>
     <a href="/collection.html">Collection</a>
@@ -23,6 +24,7 @@
   <div class="header-actions">
     <a href="/login.html">Sign in</a>
     <a class="button button-dark small" href="/register.html">Join Visora</a>
+    <button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button>
   </div>
 </header>
 
@@ -32,9 +34,8 @@
     <h1>A home for<br><em>visual stories.</em></h1>
     <p class="lead">We are building an independent photography publishing platform designed to connect photographers, meaningful work and considered publishing opportunities.</p>
     <div class="photo-carousel page-carousel" data-photo-carousel role="region" aria-roledescription="carousel" aria-label="Photography and the people behind it">
-      <figure class="photo-slide" data-photo-slide><img src="/images/home-story-photographer.jpg" alt="Photographer holding a camera at their side" loading="lazy"><figcaption>THE PHOTOGRAPHER</figcaption></figure>
-      <figure class="photo-slide" data-photo-slide hidden><img src="/images/collection-editorial.jpg" alt="Cameras and photographic contact sheets arranged on a table" loading="lazy"><figcaption>THE PROCESS</figcaption></figure>
-      <figure class="photo-slide" data-photo-slide hidden><img src="/images/photographer-workspace.jpg" alt="A camera and laptop in a warmly lit workspace" loading="lazy"><figcaption>THE WORKSPACE</figcaption></figure>
+      <figure class="photo-slide" data-photo-slide><img src="/images/about-photographer.jpg" alt="A hand holding a camera against the sky" loading="lazy"><figcaption>THE PHOTOGRAPHER</figcaption></figure>
+      <figure class="photo-slide" data-photo-slide hidden><img src="/images/image%209.jpg" alt="Instant camera and family photographs" loading="lazy"><figcaption>THE STORIES WE SHARE</figcaption></figure>
       <div class="photo-carousel-controls" data-carousel-controls hidden><button type="button" data-carousel-prev aria-label="Previous photograph">←</button><span data-carousel-status aria-live="polite"></span><button type="button" data-carousel-next aria-label="Next photograph">→</button></div>
     </div>
   </section>
@@ -66,7 +67,7 @@
 </main>
 
 <footer class="site-footer">
-  <a class="wordmark brand-logo brand-logo-light" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"></a>
+  <a class="wordmark brand-logo brand-logo-light" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
   <p>Photography, considered.</p>
   <div class="footer-links">
     <a href="/">Home</a>

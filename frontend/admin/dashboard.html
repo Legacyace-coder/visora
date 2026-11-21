@@ -7,15 +7,17 @@
   <title>Administration | Visora</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/images/visora-inc-favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/images/visora-inc-favicon-180.png">
+  <script src="/assets/js/theme.js"></script>
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body class="dashboard-page">
   <main class="dashboard-shell" data-required-role="admin" hidden>
     <header class="dashboard-header">
-      <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
-      <button class="button button-dark small" id="logout-button" type="button">
-        Sign out
-      </button>
+      <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+      <div class="dashboard-actions">
+        <button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button>
+        <button class="button button-dark small" id="logout-button" type="button">Sign out</button>
+      </div>
     </header>
 
     <div class="dashboard-layout">
@@ -160,7 +162,7 @@
     </div>
 
     <footer class="dashboard-footer">
-      <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+      <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
       <small>Photography, considered.</small>
     </footer>
   </main>

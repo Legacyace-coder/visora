@@ -273,23 +273,6 @@ footer p, footer small {
 .auth-page { min-height: 100vh; padding: 35px 6%; }
 .auth { max-width: 420px; margin: 9vh auto; }
 
-.auth-home-link {
-  display: inline-block;
-  margin-top: 28px;
-  color: #777;
-  font-size: 13px;
-  text-decoration: none;
-  transition: color .2s ease;
-}
-
-.auth-home-link:hover {
-  color: inherit;
-}
-
-.auth-home-link:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
-}
 .auth.wide { max-width: 530px; margin-top: 5vh; }
 
 .auth h1 {
@@ -1425,11 +1408,90 @@ html {
     align-content: start;
   }
 
-  .auth-page > .brand-logo,
+  .auth-page > .auth-header,
   .auth-page > .auth {
     grid-column: 1;
   }
+}
 
+  :root { color-scheme: light; }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    color: #f0eee7;
+    background: #141920;
+  }
+
+  .brand-logo img.logo-on-dark { display: none; }
+  [data-theme="dark"] .brand-logo img.logo-on-light { display: none; }
+  [data-theme="dark"] .brand-logo img.logo-on-dark { display: block; }
+
+  .auth-header,
+  .auth-actions,
+  .dashboard-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .auth-header { justify-content: space-between; flex-wrap: wrap; }
+  .auth-actions { flex-wrap: wrap; }
+  .auth-home-link,
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .auth-home-link svg { width: 18px; height: 18px; }
+  .theme-toggle {
+    min-height: 36px;
+    padding: 6px 9px;
+    border: 1px solid currentColor;
+    background: transparent;
+    cursor: pointer;
+  }
+  .theme-toggle [data-theme-icon] { font-size: 17px; line-height: 1; }
+  .theme-status { font-size: 11px; max-width: 180px; }
+  .auth-home-link:focus-visible,
+  .theme-toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+
+  [data-theme="dark"] .dashboard-page { background: #141920; }
+  [data-theme="dark"] :is(.page-hero, .simple-callout) { background: #202832; }
+  [data-theme="dark"] :is(.photo-carousel, .auth-visual, .home-hero-visual, .portfolio-image-frame, .submission-photo-grid img) { background: #2b333c; }
+  [data-theme="dark"] :is(.dashboard-overview div, .collection-card, .submission-card) { background: #202832; }
+  [data-theme="dark"] :is(.auth input, .auth select, .workspace-form input, .workspace-form select, .workspace-form textarea, .admin-settings input, .submission-card input, .submission-card select, .submission-card textarea) {
+    color: #f0eee7;
+    background: #202832;
+    border-color: #66717a;
+  }
+  [data-theme="dark"] input::placeholder,
+  [data-theme="dark"] textarea::placeholder { color: #b7bec2; }
+  [data-theme="dark"] :is(.site-header nav a, .header-actions > a:first-child, .dashboard-nav a, .eyebrow, .lead, .intro > div > p, .gallery article p, .demo-note, .auth form p, .auth small, .hint, .switch, .dashboard-overview span, .account-detail span, .dashboard-notice > p:last-child, .dashboard-footer small, .portfolio-description, .portfolio-total span, .portfolio-status, .portfolio-image-unavailable, .portfolio-card-details p, .workspace-form label span, .workspace-hint, .workspace-form p, .collection-card p, .submission-card p, .empty-index, .empty-collection p, .feature-list article > span, .feature-list p, .about-story > div > p, .simple-callout > p:not(.eyebrow), .admin-settings-description, .admin-settings-hint, #partnership-purchase-status, .photo-stories-heading > p, .photo-stories-grid figcaption, .photo-slide figcaption, .auth-visual figcaption, .home-hero-visual figcaption) {
+    color: #c1c8cc;
+  }
+  [data-theme="dark"] :is(.site-header nav a[aria-current="page"], .switch a, .portfolio-card-details h3, .company-status strong) { color: #f0eee7; }
+  [data-theme="dark"] :is(.intro, .dashboard-header, .dashboard-welcome, .dashboard-account, .account-detail, .dashboard-footer, .portfolio-section, .workspace-panel, .collection-card, .submission-card, .feature-list article, .about-story, .admin-settings) { border-color: #49535c; }
+  [data-theme="dark"] .dashboard-nav a:hover,
+  [data-theme="dark"] .dashboard-nav a:focus-visible { color: #fff; background: #39434c; }
+  [data-theme="dark"] .dashboard-nav a[aria-current="page"] { color: #141920; background: #f0eee7; }
+  [data-theme="dark"] .button-dark { color: #141920; background: #f0eee7; }
+  [data-theme="dark"] .photo-carousel-controls button { color: #f0eee7; border-color: #aab4bb; }
+  [data-theme="dark"] .photo-carousel-controls button:hover,
+  [data-theme="dark"] .photo-carousel-controls button:focus-visible { color: #141920; background: #f0eee7; }
+  [data-theme="dark"] .portfolio-selection input { accent-color: #f0eee7; }
+
+  @media (max-width: 480px) {
+    .auth-header { gap: 14px; }
+    .auth-actions, .dashboard-actions { gap: 10px; }
+    .theme-toggle { padding: 6px; }
+  }
+
+@media (min-width: 800px) {
   .auth-visual {
     grid-column: 2;
     grid-row: 1 / 3;

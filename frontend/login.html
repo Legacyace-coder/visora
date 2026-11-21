@@ -7,13 +7,20 @@
   <title>Sign in | Visora</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/images/visora-inc-favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/images/visora-inc-favicon-180.png">
+  <script src="/assets/js/theme.js"></script>
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body class="auth-page">
-  <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+  <header class="auth-header">
+    <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
+    <div class="auth-actions">
+      <a class="auth-home-link" href="/"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.5 12 3l9 7.5M5.5 9.5V21h13V9.5M9.5 21v-7h5v7"/></svg><span>Back to home</span></a>
+      <button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button>
+    </div>
+  </header>
 
   <figure class="auth-visual">
-    <img src="/images/photographers-hero.jpg" alt="Silhouette of a photographer holding a camera">
+    <img src="/images/collection-editorial.jpg" alt="Cameras and photographic contact sheets arranged on a table">
     <figcaption>YOUR PERSPECTIVE / YOUR WORK</figcaption>
   </figure>
 
