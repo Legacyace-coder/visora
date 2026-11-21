@@ -18,13 +18,31 @@
       </button>
     </header>
 
-    <section class="dashboard-welcome">
+    <div class="dashboard-layout">
+    <nav class="dashboard-nav" aria-label="Administrator workspace">
+      <a href="#overview">Overview</a>
+      <a href="#account">Account</a>
+      <a href="#platform-accounts">Photographers and agents</a>
+      <a href="#admin-submissions-heading">Submission review</a>
+      <a href="#admin-offers-heading">Acquisitions</a>
+      <a href="#admin-publications-heading">Publications</a>
+      <a href="#admin-partnerships-heading">Partnership review</a>
+      <a href="#partnership-settings">Partnership settings</a>
+    </nav>
+    <div class="dashboard-content">
+    <section class="dashboard-welcome" id="overview">
       <p class="eyebrow">PLATFORM ADMINISTRATION</p>
       <h1>Welcome back,<br><span id="dashboard-name">there</span>.</h1>
-      <p class="lead">Your account workspace is ready.</p>
+      <p class="lead">Review submissions, manage acquisitions and oversee publications.</p>
+      <div class="dashboard-overview" aria-label="Platform statistics">
+        <div><strong data-admin-stat="photographers">—</strong><span>Photographers</span></div>
+        <div><strong data-admin-stat="agents">—</strong><span>Agents</span></div>
+        <div><strong data-admin-stat="submissions">—</strong><span>Submissions</span></div>
+        <div><strong data-admin-stat="pending_submissions">—</strong><span>Pending review</span></div>
+      </div>
     </section>
 
-    <section class="dashboard-account">
+    <section class="dashboard-account" id="account">
       <p class="eyebrow">ACCOUNT DETAILS</p>
 
       <div class="account-detail">
@@ -43,7 +61,56 @@
       </div>
     </section>
 
-    <section class="admin-settings">
+    <section class="workspace-panel" id="platform-accounts" aria-labelledby="platform-accounts-heading">
+      <p class="eyebrow">PLATFORM ACCOUNTS</p>
+      <h2 id="platform-accounts-heading">Photographers and agents</h2>
+      <button id="admin-accounts-refresh" class="button button-dark small" type="button">Refresh accounts</button>
+      <p id="admin-accounts-status" role="status" aria-live="polite"></p>
+      <div id="admin-accounts-list" class="submission-list"></div>
+      <button id="admin-accounts-more" class="button button-dark small" type="button" hidden>Load more accounts</button>
+    </section>
+
+    <section class="workspace-panel" aria-labelledby="admin-submissions-heading">
+      <p class="eyebrow">SUBMISSION REVIEW</p>
+      <h2 id="admin-submissions-heading">Review submissions</h2>
+      <p class="workspace-hint">Accepted and rejected decisions are final.</p>
+      <button id="admin-submissions-refresh" class="button button-dark small" type="button">Refresh submissions</button>
+      <p id="admin-submissions-status" role="status" aria-live="polite"></p>
+      <div id="admin-submission-list" class="submission-list"></div>
+      <button id="admin-submissions-more" class="button button-dark small" type="button" hidden>Load more submissions</button>
+    </section>
+
+    <section class="workspace-panel" aria-labelledby="admin-offers-heading">
+      <p class="eyebrow">ACQUISITIONS</p>
+      <h2 id="admin-offers-heading">Offers and agreements</h2>
+      <p class="workspace-hint">Create an offer from an accepted submission above. Agreement terms cannot be edited after sending.</p>
+      <button id="admin-offers-refresh" class="button button-dark small" type="button">Refresh offers</button>
+      <p id="admin-offers-status" role="status" aria-live="polite"></p>
+      <div id="admin-offers" class="submission-list"></div>
+      <button id="admin-offers-more" class="button button-dark small" type="button" hidden>Load more offers</button>
+    </section>
+
+    <section class="workspace-panel" aria-labelledby="admin-publications-heading">
+      <p class="eyebrow">PUBLICATION</p>
+      <h2 id="admin-publications-heading">Publication history</h2>
+      <p class="workspace-hint">Publish from an accepted offer with gallery permission. Originals are publicly accessible.</p>
+      <button id="admin-publications-refresh" class="button button-dark small" type="button">Refresh publications</button>
+      <p id="admin-publications-status" role="status" aria-live="polite"></p>
+      <div id="admin-publications" class="submission-list"></div>
+      <button id="admin-publications-more" class="button button-dark small" type="button" hidden>Load more publications</button>
+    </section>
+
+    <section class="workspace-panel" aria-labelledby="admin-partnerships-heading">
+      <p class="eyebrow">PARTNERSHIP REVIEW</p>
+      <h2 id="admin-partnerships-heading">Partnership applications</h2>
+      <p class="workspace-hint">Verify the purchase independently before approval. Access to proof is recorded.</p>
+      <button id="admin-partnerships-refresh" class="button button-dark small" type="button">Refresh applications</button>
+      <p id="admin-partnerships-status" role="status" aria-live="polite"></p>
+      <div id="admin-partnerships" class="submission-list"></div>
+      <button id="admin-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
+    </section>
+
+    <section class="admin-settings" id="partnership-settings">
       <p class="eyebrow">PARTNERSHIP SETTINGS</p>
       <h2>Purchase destination</h2>
       <p class="admin-settings-description">
@@ -72,14 +139,8 @@
       </form>
     </section>
 
-    <section class="dashboard-notice">
-      <p class="eyebrow">YOUR WORKSPACE</p>
-      <h2>More is taking shape.</h2>
-      <p>
-        Your account is connected. The tools and features for this workspace
-        will be introduced as the platform is built.
-      </p>
-    </section>
+    </div>
+    </div>
 
     <footer class="dashboard-footer">
       <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>

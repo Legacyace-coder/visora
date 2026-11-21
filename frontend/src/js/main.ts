@@ -251,6 +251,9 @@ interface PhotographerPhoto {
   height: number | null;
   title: string | null;
   description: string | null;
+  capture_date: string | null;
+  location: string | null;
+  keywords: string[];
   created_at: string;
 }
 
@@ -264,8 +267,10 @@ interface PhotographerSubmission {
   id: string;
   submission_type: "individual" | "collection";
   title: string;
-  status: "pending" | "processing" | "accepted" | "rejected";
+  status: "pending" | "processing" | "accepted" | "rejected" | "withdrawn";
   submitted_at: string;
+  reviewed_at: string | null;
+  photographer_feedback: string | null;
 }
 
 interface PhotographerPhotosResponse {
@@ -278,6 +283,59 @@ interface PhotographerCollectionsResponse {
 
 interface PhotographerSubmissionsResponse {
   submissions: PhotographerSubmission[];
+  has_more: boolean;
+}
+
+interface AdminSubmission {
+  id: string;
+  photographer_id: string;
+  submission_type: "individual" | "collection";
+  title: string;
+  cover_note: string | null;
+  status: "pending" | "under_review" | "accepted" | "rejected" | "withdrawn";
+  submitted_at: string;
+  reviewed_at: string | null;
+  photographer_feedback: string | null;
+}
+
+interface AdminSubmissionDetail {
+  submission: AdminSubmission;
+  photos: { id: string; title: string | null; description: string | null; original_filename: string }[];
+  private_notes: string | null;
+}
+
+interface AcquisitionOffer {
+  id: string;
+  submission_id: string;
+  photographer_id: string;
+  amount_cents: string;
+  currency: string;
+  rights_type: "license" | "assignment";
+  exclusive: boolean;
+  territory: string;
+  permitted_uses: string;
+  attribution: string;
+  agreement_terms: string;
+  expires_on: string | null;
+  gallery_permission: boolean;
+  gallery_terms: string;
+  consent_statement: string;
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  created_at: string;
+  responded_at: string | null;
+  photos: { id: string; title: string }[];
+}
+
+interface GalleryPublication {
+  id: string;
+  offer_id: string;
+  photo_id: string;
+  photographer_id: string;
+  title: string;
+  attribution: string;
+  expires_on: string | null;
+  published_at: string;
+  unpublished_at: string | null;
 }
 
 interface PhotographerPreviewResponse {
@@ -288,6 +346,10 @@ interface PhotographerPreviewResponse {
 
 let photographerPhotos: PhotographerPhoto[] = [];
 let photographerCollections: PhotographerCollection[] = [];
+let photographerSubmissionOffset = 0;
+let adminSubmissionOffset = 0;
+let photographerSubmissionRequest = 0;
+let adminSubmissionRequest = 0;
 
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "Size unavailable";
@@ -362,6 +424,133 @@ function createPortfolioCard(
   filename.className = "portfolio-filename";
   filename.textContent = photo.original_filename;
 
+  const description = document.createElement("p");
+  description.textContent = photo.description || "";
+  const extraMetadata = document.createElement("p");
+  extraMetadata.textContent = [
+    photo.capture_date,
+    photo.location,
+    photo.keywords.join(", "),
+  ].filter(Boolean).join(" · ");
+
+  const editor = document.createElement("details");
+  editor.className = "portfolio-editor";
+  const summary = document.createElement("summary");
+  summary.textContent = "Edit photograph details";
+  const form = document.createElement("form");
+  form.className = "workspace-form";
+
+  function addField(
+    name: string,
+    labelText: string,
+    value: string,
+    maxLength: number,
+    multiline = false
+  ): void {
+    const label = document.createElement("label");
+    label.textContent = labelText;
+    const input = multiline
+      ? document.createElement("textarea")
+      : document.createElement("input");
+    input.name = name;
+    input.value = value;
+    input.maxLength = maxLength;
+    if (input instanceof HTMLInputElement && name === "capture_date") {
+      input.type = "date";
+    }
+    label.appendChild(input);
+    form.appendChild(label);
+  }
+
+  addField("title", "Title", photo.title || "", 160);
+  addField("description", "Description", photo.description || "", 3000, true);
+  addField("capture_date", "Capture date", photo.capture_date || "", 10);
+  addField("location", "Location", photo.location || "", 255);
+  addField("keywords", "Keywords (comma-separated)", photo.keywords.join(", "), 2429);
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.className = "button button-dark small";
+  save.textContent = "Save details";
+  const editStatus = document.createElement("p");
+  editStatus.setAttribute("role", "status");
+  editStatus.setAttribute("aria-live", "polite");
+  form.append(save, editStatus);
+  editor.append(summary, form);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = new FormData(form);
+    const keywordText = String(values.get("keywords") || "").trim();
+    const keywords = keywordText ? keywordText.split(",").map((word) => word.trim()) : [];
+    if (keywords.length > 30 || keywords.some((word) => !word || word.length > 80)) {
+      editStatus.textContent = "Enter up to 30 keywords, each 1 to 80 characters long.";
+      return;
+    }
+    save.disabled = true;
+    editStatus.textContent = "Saving details...";
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/photographer/photos/${encodeURIComponent(photo.id)}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: String(values.get("title") || ""),
+            description: String(values.get("description") || ""),
+            capture_date: String(values.get("capture_date") || "") || null,
+            location: String(values.get("location") || ""),
+            keywords,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const result = (await response.json()) as ApiResult;
+        throw new Error(typeof result.detail === "string" ? result.detail : "Details could not be saved.");
+      }
+      await loadPhotographerPortfolio();
+    } catch (error) {
+      editStatus.textContent = error instanceof Error ? error.message : "Details could not be saved.";
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "button button-dark small";
+  deleteButton.textContent = "Delete photograph";
+  const deleteStatus = document.createElement("p");
+  deleteStatus.setAttribute("role", "status");
+  deleteStatus.setAttribute("aria-live", "polite");
+  deleteButton.addEventListener("click", async () => {
+    if (!window.confirm("Delete this photograph? Submitted photographs cannot be deleted.")) return;
+    deleteButton.disabled = true;
+    deleteStatus.textContent = "Deleting photograph...";
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/photographer/photos/${encodeURIComponent(photo.id)}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      const result = (await response.json()) as ApiResult;
+      if (!response.ok) {
+        if (response.status === 502) {
+          await Promise.all([loadPhotographerPortfolio(), loadPhotographerOverview()]);
+          const cleanupStatus = document.querySelector<HTMLElement>("#photo-cleanup-status");
+          if (cleanupStatus) cleanupStatus.textContent = result.detail || "The photograph could not be deleted.";
+          return;
+        }
+        throw new Error(result.detail || "The photograph could not be deleted.");
+      }
+      await Promise.all([loadPhotographerPortfolio(), loadPhotographerOverview()]);
+    } catch (error) {
+      deleteStatus.textContent = error instanceof Error ? error.message : "The photograph could not be deleted.";
+    } finally {
+      deleteButton.disabled = false;
+    }
+  });
+
   const selectionLabel = document.createElement("label");
   selectionLabel.className = "portfolio-selection";
 
@@ -374,7 +563,7 @@ function createPortfolioCard(
   selectionText.textContent = "Select for individual submission";
 
   selectionLabel.append(selection, selectionText);
-  details.append(title, metadata, filename, selectionLabel);
+  details.append(title, metadata, filename, description, extraMetadata, selectionLabel, editor, deleteButton, deleteStatus);
   card.append(imageFrame, details);
 
   return card;
@@ -492,20 +681,28 @@ async function loadPhotographerCollections(): Promise<void> {
   }
 }
 
-async function loadPhotographerSubmissions(): Promise<void> {
+async function loadPhotographerSubmissions(append = false): Promise<void> {
   const list = document.querySelector<HTMLElement>("#submission-list");
-  if (!list) return;
+  const more = document.querySelector<HTMLButtonElement>("#submission-more");
+  if (!list || !more) return;
+  const requestId = ++photographerSubmissionRequest;
 
-  list.replaceChildren();
+  if (!append) {
+    photographerSubmissionOffset = 0;
+    list.replaceChildren();
+    more.hidden = true;
+  }
+  more.disabled = true;
 
   try {
-    const response = await fetch(`${apiBaseUrl}/photographer/submissions`, {
+    const response = await fetch(`${apiBaseUrl}/photographer/submissions?offset=${photographerSubmissionOffset}`, {
       method: "GET",
       credentials: "include",
     });
     const result = (await response.json()) as
       | PhotographerSubmissionsResponse
       | ApiResult;
+    if (requestId !== photographerSubmissionRequest) return;
 
     if (!response.ok) {
       const errorResult = result as ApiResult;
@@ -514,8 +711,10 @@ async function loadPhotographerSubmissions(): Promise<void> {
 
     const submissions =
       (result as PhotographerSubmissionsResponse).submissions ?? [];
+    photographerSubmissionOffset += submissions.length;
+    more.hidden = !(result as PhotographerSubmissionsResponse).has_more;
 
-    if (submissions.length === 0) {
+    if (submissions.length === 0 && !append) {
       const empty = document.createElement("p");
       empty.className = "workspace-hint";
       empty.textContent = "You have not submitted any work yet.";
@@ -538,9 +737,20 @@ async function loadPhotographerSubmissions(): Promise<void> {
         `${submission.submission_type} · ${submission.status} · ${submittedAt}`;
 
       card.append(title, details);
+      if (submission.reviewed_at) {
+        const reviewed = document.createElement("p");
+        reviewed.textContent = `Reviewed ${new Date(submission.reviewed_at).toLocaleDateString()}`;
+        card.appendChild(reviewed);
+      }
+      if (submission.photographer_feedback) {
+        const feedback = document.createElement("p");
+        feedback.textContent = `Review feedback: ${submission.photographer_feedback}`;
+        card.appendChild(feedback);
+      }
       list.appendChild(card);
     });
   } catch (error) {
+    if (requestId !== photographerSubmissionRequest) return;
     const status = document.createElement("p");
     status.className = "workspace-hint";
     status.textContent =
@@ -548,8 +758,869 @@ async function loadPhotographerSubmissions(): Promise<void> {
         ? error.message
         : "Submission history could not be loaded.";
     list.appendChild(status);
+  } finally {
+    if (requestId === photographerSubmissionRequest) more.disabled = false;
   }
 }
+
+document.querySelector<HTMLButtonElement>("#submission-refresh")
+  ?.addEventListener("click", () => void loadPhotographerSubmissions());
+document.querySelector<HTMLButtonElement>("#submission-more")
+  ?.addEventListener("click", () => void loadPhotographerSubmissions(true));
+
+async function loadAdminSubmissions(append = false): Promise<void> {
+  const list = document.querySelector<HTMLElement>("#admin-submission-list");
+  const status = document.querySelector<HTMLElement>("#admin-submissions-status");
+  const more = document.querySelector<HTMLButtonElement>("#admin-submissions-more");
+  if (!list || !status || !more) return;
+  const requestId = ++adminSubmissionRequest;
+  if (!append) {
+    adminSubmissionOffset = 0;
+    list.replaceChildren();
+    more.hidden = true;
+  }
+  more.disabled = true;
+  status.textContent = "Loading submissions...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/admin/submissions?offset=${adminSubmissionOffset}`, {
+      credentials: "include",
+    });
+    const result = (await response.json()) as ApiResult & { submissions?: AdminSubmission[]; has_more?: boolean };
+    if (requestId !== adminSubmissionRequest) return;
+    if (!response.ok) throw new Error(result.detail || "Submissions could not be loaded.");
+    const submissions = result.submissions || [];
+    adminSubmissionOffset += submissions.length;
+    more.hidden = !result.has_more;
+    status.textContent = submissions.length || append ? "" : "No submissions to review.";
+    submissions.forEach((submission) => {
+      const card = document.createElement("article");
+      card.className = "submission-card";
+      const title = document.createElement("h4");
+      title.textContent = submission.title;
+      const info = document.createElement("p");
+      const statusText = submission.status === "under_review" ? "processing" : submission.status;
+      info.textContent = `${submission.submission_type} · ${statusText} · ${new Date(submission.submitted_at).toLocaleDateString()} · Photographer ${submission.photographer_id}`;
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "button button-dark small";
+      open.textContent = "View submission";
+      const detail = document.createElement("div");
+      open.addEventListener("click", () => void loadAdminSubmissionDetail(submission.id, detail));
+      card.append(title, info, open, detail);
+      list.appendChild(card);
+    });
+  } catch (error) {
+    if (requestId !== adminSubmissionRequest) return;
+    status.textContent = error instanceof Error ? error.message : "Submissions could not be loaded.";
+  } finally {
+    if (requestId === adminSubmissionRequest) more.disabled = false;
+  }
+}
+
+async function loadAdminSubmissionDetail(id: string, container: HTMLElement): Promise<void> {
+  container.textContent = "Loading submission...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/admin/submissions/${encodeURIComponent(id)}`, {
+      credentials: "include",
+    });
+    const result = (await response.json()) as AdminSubmissionDetail & ApiResult;
+    if (!response.ok) throw new Error(result.detail || "Submission could not be loaded.");
+    container.replaceChildren();
+    const note = document.createElement("p");
+    note.textContent = `Cover note: ${result.submission.cover_note || "None"}`;
+    const privateNote = document.createElement("p");
+    privateNote.textContent = `Internal notes (admin only): ${result.private_notes || "None"}`;
+    const feedback = document.createElement("p");
+    feedback.textContent = `Photographer feedback: ${result.submission.photographer_feedback || "None"}`;
+    container.append(note, privateNote, feedback);
+
+    const photoGrid = document.createElement("div");
+    photoGrid.className = "submission-photo-grid";
+    result.photos.forEach((photo) => {
+      const figure = document.createElement("figure");
+      const image = document.createElement("img");
+      image.alt = photo.title || photo.original_filename;
+      image.loading = "lazy";
+      const caption = document.createElement("figcaption");
+      caption.textContent = photo.title || photo.original_filename;
+      if (photo.description) caption.textContent += ` — ${photo.description}`;
+      const previewStatus = document.createElement("p");
+      previewStatus.textContent = "Loading preview...";
+      figure.append(image, caption, previewStatus);
+      photoGrid.appendChild(figure);
+      void (async () => {
+        try {
+          const previewResponse = await fetch(
+            `${apiBaseUrl}/admin/submissions/${encodeURIComponent(id)}/photos/${encodeURIComponent(photo.id)}/preview`,
+            { credentials: "include" }
+          );
+          const preview = (await previewResponse.json()) as ApiResult & { preview_url?: string };
+          if (!previewResponse.ok || !preview.preview_url) {
+            throw new Error(preview.detail || "Preview unavailable.");
+          }
+          image.addEventListener("error", () => { previewStatus.textContent = "Preview unavailable."; });
+          image.src = preview.preview_url;
+          previewStatus.textContent = "";
+        } catch (error) {
+          previewStatus.textContent = error instanceof Error ? error.message : "Preview unavailable.";
+        }
+      })();
+    });
+    if (!result.photos.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "No photographs found in this submission.";
+      container.appendChild(empty);
+    }
+    container.appendChild(photoGrid);
+
+    const current = result.submission.status;
+    if (current === "accepted") {
+      container.appendChild(createAcquisitionOfferForm(result));
+    }
+    if (current !== "pending" && current !== "under_review") return;
+    const form = document.createElement("form");
+    form.className = "workspace-form";
+    const statusLabel = document.createElement("label");
+    statusLabel.textContent = "Review outcome";
+    const select = document.createElement("select");
+    select.required = true;
+    select.add(new Option("Choose an outcome", ""));
+    if (current === "pending") select.add(new Option("Processing", "under_review"));
+    select.add(new Option("Accepted", "accepted"));
+    select.add(new Option("Rejected", "rejected"));
+    statusLabel.appendChild(select);
+    const feedbackLabel = document.createElement("label");
+    feedbackLabel.textContent = "Feedback visible to the photographer";
+    const feedbackInput = document.createElement("textarea");
+    feedbackInput.maxLength = 5000;
+    feedbackInput.value = result.submission.photographer_feedback || "";
+    feedbackLabel.appendChild(feedbackInput);
+    const hint = document.createElement("p");
+    hint.textContent = "Feedback is required for rejection. Accepted and rejected decisions are final.";
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "button button-dark small";
+    save.textContent = "Save review";
+    const message = document.createElement("p");
+    message.setAttribute("role", "status");
+    message.setAttribute("aria-live", "polite");
+    form.append(statusLabel, feedbackLabel, hint, save, message);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const feedbackValue = feedbackInput.value.trim();
+      if (select.value === "rejected" && !feedbackValue) {
+        message.textContent = "Feedback is required when rejecting a submission.";
+        return;
+      }
+      if ((select.value === "accepted" || select.value === "rejected") &&
+          !window.confirm("This decision is final. Continue?")) return;
+      save.disabled = true;
+      message.textContent = "Saving review...";
+      try {
+        const reviewResponse = await fetch(
+          `${apiBaseUrl}/admin/submissions/${encodeURIComponent(id)}/review`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              expected_status: current,
+              status: select.value,
+              photographer_feedback: feedbackValue || null,
+            }),
+          }
+        );
+        const review = (await reviewResponse.json()) as ApiResult;
+        if (!reviewResponse.ok) throw new Error(review.detail || "Review could not be saved.");
+        await loadAdminSubmissions();
+      } catch (error) {
+        message.textContent = error instanceof Error ? error.message : "Review could not be saved.";
+      } finally {
+        save.disabled = false;
+      }
+    });
+    container.appendChild(form);
+  } catch (error) {
+    container.textContent = error instanceof Error ? error.message : "Submission could not be loaded.";
+  }
+}
+
+document.querySelector<HTMLButtonElement>("#admin-submissions-refresh")
+  ?.addEventListener("click", () => void loadAdminSubmissions());
+document.querySelector<HTMLButtonElement>("#admin-submissions-more")
+  ?.addEventListener("click", () => void loadAdminSubmissions(true));
+
+function formatUsdCents(cents: string): string {
+  const amount = BigInt(cents);
+  return `$${(amount / 100n).toLocaleString("en-US")}.${String(amount % 100n).padStart(2, "0")}`;
+}
+
+function isExpired(date: string | null): boolean {
+  return date !== null && date < new Date().toISOString().slice(0, 10);
+}
+
+function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement {
+  const section = document.createElement("details");
+  const heading = document.createElement("summary");
+  heading.textContent = "Create acquisition offer";
+  const form = document.createElement("form");
+  form.className = "workspace-form acquisition-form";
+  form.innerHTML = `
+    <p>Select the photographs covered by this offer (up to 100).</p>
+    <div class="offer-photo-selection"></div>
+    <label>Compensation in USD cents <input name="amount_cents" inputmode="numeric" pattern="[1-9][0-9]{0,18}" required></label>
+    <p>For example, 12550 means $125.50. Acceptance immediately credits the photographer's available wallet.</p>
+    <label>Rights <select name="rights_type" required><option value="">Choose rights</option><option value="license">License</option><option value="assignment">Assignment</option></select></label>
+    <label class="offer-checkbox"><input type="checkbox" name="exclusive"> Exclusive</label>
+    <label>Territory <input name="territory" maxlength="500" required></label>
+    <label>Permitted uses <textarea name="permitted_uses" maxlength="5000" required></textarea></label>
+    <label>Photographer attribution <input name="attribution" maxlength="500" required></label>
+    <label>Full agreement terms <textarea name="agreement_terms" maxlength="10000" required></textarea></label>
+    <label>Agreement ends on <input name="expires_on" type="date"></label>
+    <p>Leave the end date blank only for a perpetual agreement.</p>
+    <label class="offer-checkbox"><input type="checkbox" name="gallery_permission"> Request permission to publish downloadable originals worldwide in the Visora gallery</label>
+    <p>With permission: visitors can view and download originals, and saved copies may remain after removal. Permission lasts until the agreement expires or publication is withdrawn.</p>
+    <p>Use reviewed agreement terms. Offers cannot be edited once sent; cancel and replace a pending offer instead.</p>
+    <button class="button button-dark small" type="submit">Send offer</button>
+    <p class="offer-form-status" role="status" aria-live="polite"></p>
+  `;
+  const selections = form.querySelector<HTMLElement>(".offer-photo-selection");
+  const status = form.querySelector<HTMLElement>(".offer-form-status");
+  const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (selections) {
+    detail.photos.forEach((photo) => {
+      const label = document.createElement("label");
+      label.className = "offer-checkbox";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.name = "photo_ids";
+      checkbox.value = photo.id;
+      const text = document.createElement("span");
+      text.textContent = photo.title || photo.original_filename;
+      label.append(checkbox, text);
+      selections.appendChild(label);
+    });
+  }
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!status || !submit) return;
+    const data = new FormData(form);
+    const photoIds = data.getAll("photo_ids").map(String);
+    const amount = String(data.get("amount_cents") || "");
+    if (photoIds.length < 1 || photoIds.length > 100) {
+      status.textContent = "Select between 1 and 100 photographs.";
+      return;
+    }
+    if (!/^[1-9][0-9]{0,18}$/.test(amount) || BigInt(amount) > 9223372036854775807n) {
+      status.textContent = "Enter a positive amount in cents within the supported range.";
+      return;
+    }
+    if (!window.confirm("Send this binding offer? Its terms cannot be edited after sending.")) return;
+    submit.disabled = true;
+    status.textContent = "Sending offer...";
+    try {
+      const response = await fetch(`${apiBaseUrl}/admin/acquisition-offers`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission_id: detail.submission.id,
+          photo_ids: photoIds,
+          amount_cents: amount,
+          rights_type: String(data.get("rights_type") || ""),
+          exclusive: data.has("exclusive"),
+          territory: String(data.get("territory") || "").trim(),
+          permitted_uses: String(data.get("permitted_uses") || "").trim(),
+          attribution: String(data.get("attribution") || "").trim(),
+          agreement_terms: String(data.get("agreement_terms") || "").trim(),
+          expires_on: String(data.get("expires_on") || "") || null,
+          gallery_permission: data.has("gallery_permission"),
+        }),
+      });
+      const result = (await response.json()) as ApiResult;
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Offer could not be sent. Check all fields.");
+      form.reset();
+      status.textContent = "Offer sent.";
+      await refreshAdminOffers();
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Offer could not be sent.";
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  section.append(heading, form);
+  return section;
+}
+
+function setupPagedList<T>(
+  id: string,
+  endpoint: string,
+  key: "offers" | "publications" | "applications",
+  emptyMessage: string,
+  render: (item: T) => HTMLElement
+): () => Promise<void> {
+  let offset = 0;
+  let requestId = 0;
+  const list = document.getElementById(id);
+  const status = document.getElementById(`${id}-status`);
+  const more = document.querySelector<HTMLButtonElement>(`#${id}-more`);
+  const refresh = document.querySelector<HTMLButtonElement>(`#${id}-refresh`);
+
+  async function load(append: boolean): Promise<void> {
+    if (!list || !status || !more) return;
+    const currentRequest = ++requestId;
+    if (!append) {
+      offset = 0;
+      list.replaceChildren();
+      more.hidden = true;
+    }
+    more.disabled = true;
+    status.textContent = "Loading...";
+    try {
+      const response = await fetch(`${apiBaseUrl}${endpoint}?offset=${offset}`, { credentials: "include" });
+      const result = (await response.json()) as ApiResult & { offers?: T[]; publications?: T[]; applications?: T[]; has_more?: boolean };
+      if (currentRequest !== requestId) return;
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Could not load records.");
+      const items = result[key];
+      if (!Array.isArray(items) || typeof result.has_more !== "boolean") {
+        throw new Error("The server returned an invalid response.");
+      }
+      offset += items.length;
+      more.hidden = !result.has_more;
+      status.textContent = items.length || append ? "" : emptyMessage;
+      items.forEach((item) => list.appendChild(render(item)));
+    } catch (error) {
+      if (currentRequest === requestId) {
+        status.textContent = error instanceof Error ? error.message : "Could not load records.";
+      }
+    } finally {
+      if (currentRequest === requestId) more.disabled = false;
+    }
+  }
+  refresh?.addEventListener("click", () => void load(false));
+  more?.addEventListener("click", () => void load(true));
+  return () => load(false);
+}
+
+async function loadWallet(): Promise<void> {
+  const status = document.getElementById("wallet-status");
+  if (!status) return;
+  status.textContent = "Loading wallet...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/wallet`, { credentials: "include" });
+    const result = (await response.json()) as ApiResult & {
+      wallet?: { currency: string; available_balance_cents: string; pending_balance_cents: string } | null;
+    };
+    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Wallet could not be loaded.");
+    if (result.wallet === null) {
+      status.textContent = "No wallet account yet.";
+    } else if (result.wallet) {
+      status.textContent = `Available: ${formatUsdCents(result.wallet.available_balance_cents)} USD · Pending: ${formatUsdCents(result.wallet.pending_balance_cents)} USD`;
+    } else {
+      throw new Error("The server returned an invalid wallet response.");
+    }
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Wallet could not be loaded.";
+  }
+}
+
+function createOfferCard(offer: AcquisitionOffer, admin: boolean): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "submission-card";
+  const heading = document.createElement("h4");
+  heading.textContent = `${formatUsdCents(offer.amount_cents)} USD · ${offer.status}`;
+  const info = document.createElement("p");
+  info.textContent = `Offered ${new Date(offer.created_at).toLocaleDateString()}${offer.responded_at ? ` · Responded ${new Date(offer.responded_at).toLocaleDateString()}` : ""}${admin ? ` · Photographer ${offer.photographer_id} · Submission ${offer.submission_id}` : ""}`;
+  const photos = document.createElement("p");
+  photos.textContent = `Photographs: ${offer.photos.map((photo) => `${photo.title} (${photo.id})`).join(", ")}`;
+  const photoDetails = document.createElement("details");
+  const photoSummary = document.createElement("summary");
+  photoSummary.textContent = "View photographs in this offer";
+  const photoGrid = document.createElement("div");
+  photoGrid.className = "submission-photo-grid";
+  photoDetails.append(photoSummary, photoGrid);
+  photoDetails.addEventListener("toggle", () => {
+    if (!photoDetails.open) return;
+    photoGrid.replaceChildren();
+    offer.photos.forEach((photo) => {
+      const figure = document.createElement("figure");
+      const caption = document.createElement("figcaption");
+      caption.textContent = `${photo.title} (${photo.id})`;
+      const image = document.createElement("img");
+      image.alt = photo.title;
+      image.loading = "lazy";
+      const imageStatus = document.createElement("p");
+      imageStatus.textContent = "Loading preview...";
+      figure.append(image, caption, imageStatus);
+      photoGrid.appendChild(figure);
+      const endpoint = admin
+        ? `/admin/submissions/${encodeURIComponent(offer.submission_id)}/photos/${encodeURIComponent(photo.id)}/preview`
+        : `/photographer/photos/${encodeURIComponent(photo.id)}/preview`;
+      void (async () => {
+        try {
+          const response = await fetch(`${apiBaseUrl}${endpoint}`, { credentials: "include" });
+          const preview = (await response.json()) as ApiResult & { preview_url?: string };
+          if (!response.ok || !preview.preview_url) throw new Error("Preview unavailable.");
+          image.addEventListener("error", () => { imageStatus.textContent = "Preview unavailable."; });
+          image.src = preview.preview_url;
+          imageStatus.textContent = "";
+        } catch (error) {
+          imageStatus.textContent = error instanceof Error ? error.message : "Preview unavailable.";
+        }
+      })();
+    });
+  });
+  const terms = document.createElement("p");
+  terms.className = "agreement-text";
+  terms.textContent = [
+    `Rights: ${offer.rights_type}; ${offer.exclusive ? "exclusive" : "non-exclusive"}`,
+    `Territory: ${offer.territory}`,
+    `Permitted uses: ${offer.permitted_uses}`,
+    `Attribution: ${offer.attribution}`,
+    `Duration: ${offer.expires_on ? `through ${offer.expires_on} (UTC)` : "perpetual"}`,
+    `Gallery: ${offer.gallery_terms}`,
+    `Agreement terms:\n${offer.agreement_terms}`,
+  ].join("\n");
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  card.append(heading, info, photos, photoDetails, terms, status);
+  if (offer.status === "pending" && !admin) {
+    const consent = document.createElement("label");
+    consent.className = "offer-checkbox";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    const text = document.createElement("span");
+    text.textContent = offer.consent_statement;
+    consent.append(checkbox, text);
+    const accept = document.createElement("button");
+    accept.type = "button";
+    accept.className = "button button-dark small";
+    accept.textContent = "Accept offer";
+    accept.disabled = isExpired(offer.expires_on);
+    const decline = document.createElement("button");
+    decline.type = "button";
+    decline.className = "button button-dark small";
+    decline.textContent = "Decline offer";
+    if (accept.disabled) status.textContent = "This offer has expired.";
+    async function respond(accepted: boolean): Promise<void> {
+      if (accepted && !checkbox.checked) {
+        status.textContent = "Confirm that you agree to the terms before accepting.";
+        return;
+      }
+      if (!window.confirm(accepted
+        ? "Accept this agreement and credit the stated amount to your available wallet? This cannot be undone."
+        : "Decline this offer?")) return;
+      accept.disabled = true;
+      decline.disabled = true;
+      status.textContent = "Saving your response...";
+      try {
+        const response = await fetch(`${apiBaseUrl}/photographer/acquisition-offers/${encodeURIComponent(offer.id)}/response`, {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accept: accepted, confirm_terms: accepted && checkbox.checked }),
+        });
+        const result = (await response.json()) as ApiResult;
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Response could not be saved.");
+        await Promise.all([refreshPhotographerOffers(), loadWallet()]);
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Response could not be saved.";
+      } finally {
+        accept.disabled = isExpired(offer.expires_on);
+        decline.disabled = false;
+      }
+    }
+    accept.addEventListener("click", () => void respond(true));
+    decline.addEventListener("click", () => void respond(false));
+    card.append(consent, accept, decline);
+  }
+  if (admin && offer.status === "pending") {
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "button button-dark small";
+    cancel.textContent = "Cancel offer";
+    cancel.addEventListener("click", async () => {
+      if (!window.confirm("Cancel this pending offer?")) return;
+      cancel.disabled = true;
+      try {
+        const response = await fetch(`${apiBaseUrl}/admin/acquisition-offers/${encodeURIComponent(offer.id)}/cancel`, {
+          method: "POST", credentials: "include",
+        });
+        const result = (await response.json()) as ApiResult;
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Offer could not be cancelled.");
+        await refreshAdminOffers();
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Offer could not be cancelled.";
+      } finally {
+        cancel.disabled = false;
+      }
+    });
+    card.appendChild(cancel);
+  }
+  if (admin && offer.status === "accepted" && offer.gallery_permission && !isExpired(offer.expires_on)) {
+    offer.photos.forEach((photo) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button button-dark small";
+      button.textContent = `Publish ${photo.title}`;
+      button.addEventListener("click", async () => {
+        if (!window.confirm("Publish this original publicly in the Visora gallery?")) return;
+        button.disabled = true;
+        try {
+          const response = await fetch(`${apiBaseUrl}/admin/publications`, {
+            method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ offer_id: offer.id, photo_id: photo.id }),
+          });
+          const result = (await response.json()) as ApiResult;
+          if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Publication failed.");
+          status.textContent = "Photograph published.";
+          await refreshAdminPublications();
+        } catch (error) {
+          status.textContent = error instanceof Error ? error.message : "Publication failed.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+      card.appendChild(button);
+    });
+  }
+  return card;
+}
+
+function createPublicationCard(publication: GalleryPublication, admin: boolean): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "submission-card";
+  const title = document.createElement("h4");
+  title.textContent = publication.title;
+  const info = document.createElement("p");
+  const state = publication.unpublished_at ? "Unpublished" : isExpired(publication.expires_on) ? "Expired" : "Published";
+  info.textContent = `${state} · ${publication.attribution} · ${new Date(publication.published_at).toLocaleDateString()}`;
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  card.append(title, info, status);
+  if (state === "Published") {
+    const link = document.createElement("a");
+    link.href = `${apiBaseUrl}/gallery/${encodeURIComponent(publication.id)}/image`;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "View published original";
+    card.appendChild(link);
+  }
+  if (admin && !publication.unpublished_at) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "button button-dark small";
+    button.textContent = "Unpublish";
+    button.addEventListener("click", async () => {
+      if (!window.confirm("Remove this original from the public gallery?")) return;
+      button.disabled = true;
+      try {
+        const response = await fetch(`${apiBaseUrl}/admin/publications/${encodeURIComponent(publication.id)}/unpublish`, {
+          method: "POST", credentials: "include",
+        });
+        const result = (await response.json()) as ApiResult;
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Could not unpublish.");
+        await refreshAdminPublications();
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Could not unpublish.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+    card.appendChild(button);
+  }
+  return card;
+}
+
+function createPublicGalleryCard(publication: GalleryPublication): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "portfolio-card";
+  const image = document.createElement("img");
+  image.className = "portfolio-image";
+  image.loading = "lazy";
+  image.alt = publication.title;
+  image.src = `${apiBaseUrl}/gallery/${encodeURIComponent(publication.id)}/image`;
+  const link = document.createElement("a");
+  link.className = "portfolio-image-link";
+  link.href = image.src;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.appendChild(image);
+  const imageFrame = document.createElement("div");
+  imageFrame.className = "portfolio-image-frame";
+  imageFrame.appendChild(link);
+  const details = document.createElement("div");
+  details.className = "portfolio-card-details";
+  const title = document.createElement("h3");
+  title.textContent = publication.title;
+  const attribution = document.createElement("p");
+  attribution.textContent = publication.attribution;
+  const status = document.createElement("p");
+  image.addEventListener("error", () => { status.textContent = "Photograph is unavailable."; });
+  details.append(title, attribution, status);
+  card.append(imageFrame, details);
+  return card;
+}
+
+const refreshPhotographerOffers = setupPagedList<AcquisitionOffer>(
+  "photographer-offers", "/photographer/acquisition-offers", "offers", "No acquisition offers yet.",
+  (offer) => createOfferCard(offer, false)
+);
+const refreshAdminOffers = setupPagedList<AcquisitionOffer>(
+  "admin-offers", "/admin/acquisition-offers", "offers", "No acquisition offers yet.",
+  (offer) => createOfferCard(offer, true)
+);
+const refreshPhotographerPublications = setupPagedList<GalleryPublication>(
+  "photographer-publications", "/photographer/publications", "publications", "No publication history yet.",
+  (publication) => createPublicationCard(publication, false)
+);
+const refreshAdminPublications = setupPagedList<GalleryPublication>(
+  "admin-publications", "/admin/publications", "publications", "No publication history yet.",
+  (publication) => createPublicationCard(publication, true)
+);
+const refreshPublicGallery = setupPagedList<GalleryPublication>(
+  "public-gallery", "/gallery", "publications", "No photographs have been published yet.",
+  createPublicGalleryCard
+);
+if (document.getElementById("public-gallery")) void refreshPublicGallery();
+
+interface PartnershipApplication {
+  id: string;
+  photographer_id: string;
+  proof_type: "code" | "image";
+  status: "pending" | "approved" | "rejected";
+  partnership_id: string | null;
+  submitted_at: string;
+  review_reason: string | null;
+  proof_deleted_at: string | null;
+}
+
+function createPartnershipCard(application: PartnershipApplication, admin: boolean): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "submission-card";
+  const heading = document.createElement("h3");
+  heading.textContent = `Partnership · ${application.status}`;
+  const detail = document.createElement("p");
+  detail.textContent = `Submitted ${new Date(application.submitted_at).toLocaleDateString()}${admin ? ` · Photographer ${application.photographer_id}` : ""}`;
+  card.append(heading, detail);
+  if (application.partnership_id) {
+    const id = document.createElement("p");
+    id.textContent = `Partnership ID: ${application.partnership_id}`;
+    card.appendChild(id);
+  }
+  if (application.review_reason) {
+    const reason = document.createElement("p");
+    reason.textContent = `Review: ${application.review_reason}`;
+    card.appendChild(reason);
+  }
+  if (application.proof_deleted_at) {
+    const deleted = document.createElement("p");
+    deleted.textContent = "Proof deleted by an administrator; the application record is retained.";
+    card.appendChild(deleted);
+  }
+  if (!admin) return card;
+
+  if (application.proof_deleted_at) return card;
+  const proofButton = document.createElement("button");
+  proofButton.type = "button";
+  proofButton.className = "button button-dark small";
+  proofButton.textContent = "View proof";
+  const proofContainer = document.createElement("div");
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  proofButton.addEventListener("click", async () => {
+    if (proofContainer.hasChildNodes()) {
+      proofContainer.replaceChildren();
+      proofButton.textContent = "View proof";
+      return;
+    }
+    proofButton.disabled = true;
+    status.textContent = "Loading proof...";
+    try {
+      const response = await fetch(`${apiBaseUrl}/admin/partnership-applications/${encodeURIComponent(application.id)}/proof`, {
+        credentials: "include", cache: "no-store",
+      });
+      const result = await response.json() as ApiResult & {
+        proof_type?: "code" | "image";
+        proof?: { code?: string; mime_type?: string; base64?: string };
+      };
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Proof could not be loaded.");
+      if (result.proof_type === "code" && typeof result.proof?.code === "string") {
+        const code = document.createElement("p");
+        code.textContent = `Card code: ${result.proof.code}`;
+        proofContainer.appendChild(code);
+      } else if (result.proof_type === "image" && result.proof?.base64 &&
+        ["image/jpeg", "image/png", "image/webp"].includes(result.proof.mime_type || "")) {
+        const image = document.createElement("img");
+        image.alt = "Submitted partnership card";
+        image.style.maxWidth = "100%";
+        image.src = `data:${result.proof.mime_type};base64,${result.proof.base64}`;
+        proofContainer.appendChild(image);
+      } else {
+        throw new Error("The server returned invalid proof.");
+      }
+      proofButton.textContent = "Hide proof";
+      status.textContent = "";
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Proof could not be loaded.";
+    } finally {
+      proofButton.disabled = false;
+    }
+  });
+  card.append(proofButton, proofContainer, status);
+  if (application.status === "pending") {
+    const reason = document.createElement("textarea");
+    reason.maxLength = 2000;
+    reason.placeholder = "Reason (required for rejection)";
+    reason.setAttribute("aria-label", "Partnership review reason");
+    const approve = document.createElement("button");
+    approve.type = "button";
+    approve.className = "button button-dark small";
+    approve.textContent = "Approve partnership";
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "button button-dark small";
+    reject.textContent = "Reject application";
+    async function review(approved: boolean): Promise<void> {
+      if (!approved && !reason.value.trim()) {
+        status.textContent = "Enter a reason for rejection.";
+        return;
+      }
+      if (approved && !window.confirm("Confirm that you independently verified the card purchase. Approval issues a partnership ID.")) return;
+      approve.disabled = true;
+      reject.disabled = true;
+      status.textContent = "Saving decision...";
+      try {
+        const response = await fetch(`${apiBaseUrl}/admin/partnership-applications/${encodeURIComponent(application.id)}/review`, {
+          method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approve: approved, reason: reason.value.trim() }),
+        });
+        const result = await response.json() as ApiResult;
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Decision could not be saved.");
+        await refreshAdminPartnerships();
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Decision could not be saved.";
+      } finally {
+        approve.disabled = false;
+        reject.disabled = false;
+      }
+    }
+    approve.addEventListener("click", () => void review(true));
+    reject.addEventListener("click", () => void review(false));
+    card.append(reason, approve, reject);
+  } else {
+    const deletionReason = document.createElement("textarea");
+    deletionReason.maxLength = 2000;
+    deletionReason.placeholder = "Reason for deleting proof";
+    deletionReason.setAttribute("aria-label", "Proof deletion reason");
+    const deleteProof = document.createElement("button");
+    deleteProof.type = "button";
+    deleteProof.className = "button button-dark small";
+    deleteProof.textContent = "Delete proof";
+    deleteProof.addEventListener("click", async () => {
+      if (!deletionReason.value.trim()) {
+        status.textContent = "Enter a reason for deleting the proof.";
+        return;
+      }
+      if (!window.confirm("Remove the card proof from the active application? Backups may retain copies. The application and audit record will remain.")) return;
+      deleteProof.disabled = true;
+      status.textContent = "Deleting proof...";
+      try {
+        const response = await fetch(`${apiBaseUrl}/admin/partnership-applications/${encodeURIComponent(application.id)}/delete-proof`, {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: deletionReason.value.trim() }),
+        });
+        const result = await response.json() as ApiResult;
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Proof could not be deleted.");
+        await refreshAdminPartnerships();
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Proof could not be deleted.";
+      } finally {
+        deleteProof.disabled = false;
+      }
+    });
+    card.append(deletionReason, deleteProof);
+  }
+  return card;
+}
+
+const refreshPhotographerPartnerships = setupPagedList<PartnershipApplication>(
+  "photographer-partnerships", "/photographer/partnership-applications", "applications", "No partnership applications yet.",
+  (application) => createPartnershipCard(application, false),
+);
+const refreshAdminPartnerships = setupPagedList<PartnershipApplication>(
+  "admin-partnerships", "/admin/partnership-applications", "applications", "No partnership applications yet.",
+  (application) => createPartnershipCard(application, true),
+);
+
+const partnershipForm = document.querySelector<HTMLFormElement>("#partnership-form");
+partnershipForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const status = document.querySelector<HTMLElement>("#partnership-form-status");
+  const button = partnershipForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  const code = document.querySelector<HTMLInputElement>("#partnership-code");
+  const file = document.querySelector<HTMLInputElement>("#partnership-file");
+  if (!status || !button || !code || !file) return;
+  if (Boolean(code.value.trim()) === Boolean(file.files?.length)) {
+    status.textContent = "Provide either a card code or a card image.";
+    return;
+  }
+  if (file.files?.[0] && file.files[0].size > 2 * 1024 * 1024) {
+    status.textContent = "Card images must be 2 MB or smaller.";
+    return;
+  }
+  button.disabled = true;
+  status.textContent = "Submitting...";
+  try {
+    const body = new FormData(partnershipForm);
+    if (!file.files?.length) body.delete("file");
+    const response = await fetch(`${apiBaseUrl}/photographer/partnership-applications`, {
+      method: "POST", credentials: "include", body,
+    });
+    const result = await response.json() as ApiResult;
+    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Application could not be submitted.");
+    partnershipForm.reset();
+    status.textContent = "Application submitted for review.";
+    await refreshPhotographerPartnerships();
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Application could not be submitted.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+let photographerOverviewRequest = 0;
+
+async function loadPhotographerOverview(): Promise<void> {
+  const status = document.querySelector<HTMLElement>("#overview-status");
+  if (!status) return;
+  const requestId = ++photographerOverviewRequest;
+  const stats = document.querySelectorAll<HTMLElement>("[data-overview-stat]");
+  status.textContent = "Loading statistics...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/overview`, {
+      credentials: "include",
+    });
+    const result = await response.json() as { statistics?: Record<string, number>; detail?: string };
+    if (requestId !== photographerOverviewRequest) return;
+    if (!response.ok || !result.statistics) {
+      throw new Error(result.detail || "Statistics could not be loaded.");
+    }
+    stats.forEach((element) => {
+      const value = result.statistics?.[element.dataset.overviewStat || ""];
+      element.textContent = typeof value === "number" ? String(value) : "—";
+    });
+    status.textContent = "";
+  } catch (error) {
+    if (requestId !== photographerOverviewRequest) return;
+    stats.forEach((element) => { element.textContent = "—"; });
+    status.textContent = error instanceof Error ? error.message : "Statistics could not be loaded.";
+  }
+}
+
+document.querySelector<HTMLButtonElement>("#overview-refresh")
+  ?.addEventListener("click", () => void loadPhotographerOverview());
 
 async function loadPhotographerPortfolio(): Promise<void> {
   const status = document.querySelector<HTMLElement>("#portfolio-status");
@@ -644,6 +1715,12 @@ photoUploadForm?.addEventListener("submit", async (event) => {
   if (!status) return;
 
   const formData = new FormData(photoUploadForm);
+  const keywordText = String(formData.get("keywords") || "").trim();
+  const keywords = keywordText ? keywordText.split(",").map((word) => word.trim()) : [];
+  if (keywords.length > 30 || keywords.some((word) => !word || word.length > 80)) {
+    status.textContent = "Enter up to 30 keywords, each 1 to 80 characters long.";
+    return;
+  }
   status.textContent = "Uploading photograph...";
   if (submitButton) submitButton.disabled = true;
 
@@ -661,7 +1738,7 @@ photoUploadForm?.addEventListener("submit", async (event) => {
 
     photoUploadForm.reset();
     status.textContent = "Photograph uploaded.";
-    await loadPhotographerPortfolio();
+    await Promise.all([loadPhotographerPortfolio(), loadPhotographerOverview()]);
   } catch (error) {
     status.textContent =
       error instanceof Error
@@ -669,6 +1746,29 @@ photoUploadForm?.addEventListener("submit", async (event) => {
         : "The photograph could not be uploaded.";
   } finally {
     if (submitButton) submitButton.disabled = false;
+  }
+});
+
+const photoCleanupButton =
+  document.querySelector<HTMLButtonElement>("#photo-cleanup-button");
+
+photoCleanupButton?.addEventListener("click", async () => {
+  const status = document.querySelector<HTMLElement>("#photo-cleanup-status");
+  if (!status) return;
+  photoCleanupButton.disabled = true;
+  status.textContent = "Retrying cleanup...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/photo-deletion-cleanup`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const result = (await response.json()) as ApiResult;
+    if (!response.ok) throw new Error(result.detail || "Cleanup could not be completed.");
+    status.textContent = "Pending original cleanup completed.";
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Cleanup could not be completed.";
+  } finally {
+    photoCleanupButton.disabled = false;
   }
 });
 
@@ -709,7 +1809,7 @@ collectionCreateForm?.addEventListener("submit", async (event) => {
 
     collectionCreateForm.reset();
     status.textContent = "Collection created.";
-    await loadPhotographerCollections();
+    await Promise.all([loadPhotographerCollections(), loadPhotographerOverview()]);
   } catch (error) {
     status.textContent =
       error instanceof Error
@@ -822,7 +1922,7 @@ individualSubmissionForm?.addEventListener("submit", async (event) => {
 
     individualSubmissionForm.reset();
     status.textContent = "Photographs submitted for review.";
-    await loadPhotographerSubmissions();
+    await Promise.all([loadPhotographerSubmissions(), loadPhotographerOverview()]);
   } catch (error) {
     status.textContent =
       error instanceof Error
@@ -872,7 +1972,7 @@ collectionSubmissionForm?.addEventListener("submit", async (event) => {
 
     collectionSubmissionForm.reset();
     status.textContent = "Collection submitted for review.";
-    await loadPhotographerSubmissions();
+    await Promise.all([loadPhotographerSubmissions(), loadPhotographerOverview()]);
   } catch (error) {
     status.textContent =
       error instanceof Error
@@ -882,6 +1982,246 @@ collectionSubmissionForm?.addEventListener("submit", async (event) => {
     if (submitButton) submitButton.disabled = false;
   }
 });
+const profilePhotoForm = document.querySelector<HTMLFormElement>("#profile-photo-form");
+const profilePhotoImage = document.querySelector<HTMLImageElement>("#profile-photo");
+const profilePhotoStatus = document.querySelector<HTMLElement>("#profile-photo-status");
+const profilePhotoDelete = document.querySelector<HTMLButtonElement>("#profile-photo-delete");
+let profilePhotoUrl: string | null = null;
+let profilePhotoRequest = 0;
+
+async function loadProfilePhoto(): Promise<boolean> {
+  if (!profilePhotoImage || !profilePhotoStatus || !profilePhotoDelete) return false;
+  const requestId = ++profilePhotoRequest;
+  try {
+    const response = await fetch(`${apiBaseUrl}/account/photo`, { credentials: "include" });
+    if (requestId !== profilePhotoRequest) return false;
+    if (response.status === 404) {
+      if (profilePhotoUrl) URL.revokeObjectURL(profilePhotoUrl);
+      profilePhotoUrl = null;
+      profilePhotoImage.removeAttribute("src");
+      profilePhotoImage.hidden = true;
+      profilePhotoDelete.hidden = true;
+      return true;
+    }
+    if (!response.ok) throw new Error("Profile photo could not be loaded.");
+    const blob = await response.blob();
+    if (requestId !== profilePhotoRequest) return false;
+    const url = URL.createObjectURL(blob);
+    if (profilePhotoUrl) URL.revokeObjectURL(profilePhotoUrl);
+    profilePhotoUrl = url;
+    profilePhotoImage.src = url;
+    profilePhotoImage.hidden = false;
+    profilePhotoDelete.hidden = false;
+    return true;
+  } catch (error) {
+    if (requestId === profilePhotoRequest) {
+      profilePhotoStatus.textContent = error instanceof Error ? error.message : "Profile photo could not be loaded.";
+    }
+    return false;
+  }
+}
+
+profilePhotoForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.querySelector<HTMLInputElement>("#profile-photo-file");
+  const button = profilePhotoForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (!input?.files?.[0] || !button || !profilePhotoStatus) return;
+  if (input.files[0].size > 2 * 1024 * 1024) {
+    profilePhotoStatus.textContent = "Profile photos must be 2 MB or smaller.";
+    return;
+  }
+  button.disabled = true;
+  if (profilePhotoDelete) profilePhotoDelete.disabled = true;
+  profilePhotoStatus.textContent = "Uploading...";
+  try {
+    const body = new FormData(profilePhotoForm);
+    const response = await fetch(`${apiBaseUrl}/account/photo`, { method: "PUT", credentials: "include", body });
+    const result = await response.json() as ApiResult;
+    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Profile photo could not be saved.");
+    profilePhotoForm.reset();
+    profilePhotoStatus.textContent = "Profile photo saved.";
+    await loadProfilePhoto();
+  } catch (error) {
+    profilePhotoStatus.textContent = error instanceof Error ? error.message : "Profile photo could not be saved.";
+  } finally {
+    button.disabled = false;
+    if (profilePhotoDelete) profilePhotoDelete.disabled = false;
+  }
+});
+
+profilePhotoDelete?.addEventListener("click", async () => {
+  if (!profilePhotoStatus) return;
+  profilePhotoDelete.disabled = true;
+  const upload = profilePhotoForm?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (upload) upload.disabled = true;
+  profilePhotoStatus.textContent = "Removing...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/account/photo`, { method: "DELETE", credentials: "include" });
+    const result = await response.json() as ApiResult;
+    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Profile photo could not be removed.");
+    if (await loadProfilePhoto()) profilePhotoStatus.textContent = result.message || "Profile photo removed.";
+  } catch (error) {
+    profilePhotoStatus.textContent = error instanceof Error ? error.message : "Profile photo could not be removed.";
+  } finally {
+    profilePhotoDelete.disabled = false;
+    if (upload) upload.disabled = false;
+  }
+});
+
+function setupCredentialForm(kind: "email" | "password"): void {
+  const form = document.querySelector<HTMLFormElement>(`#${kind}-change-form`);
+  const status = document.querySelector<HTMLElement>(`#${kind}-change-status`);
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (!status || !button) return;
+    const data = new FormData(form);
+    const currentPassword = String(data.get("current_password") || "");
+    const value = String(data.get(kind === "email" ? "new_email" : "new_password") || "");
+    if (kind === "password" && value !== String(data.get("confirm_password") || "")) {
+      status.textContent = "New passwords do not match.";
+      return;
+    }
+    button.disabled = true;
+    status.textContent = "Saving...";
+    try {
+      const payload = kind === "email"
+        ? { current_password: currentPassword, new_email: value }
+        : { current_password: currentPassword, new_password: value };
+      const response = await fetch(`${apiBaseUrl}/account/credentials`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as ApiResult & { email?: string | null; sign_in_required?: boolean };
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Account settings could not be updated.");
+      form.reset();
+      status.textContent = result.message || "Account settings updated.";
+      if (result.email) {
+        const email = document.querySelector<HTMLElement>("#dashboard-email");
+        if (email) email.textContent = result.email;
+      }
+      if (result.sign_in_required) {
+        const link = document.querySelector<HTMLElement>("#credential-login");
+        if (link) link.hidden = false;
+        button.disabled = true;
+        return;
+      }
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Account settings could not be updated.";
+    }
+    button.disabled = false;
+  });
+}
+setupCredentialForm("email");
+setupCredentialForm("password");
+
+const displayNameForm = document.querySelector<HTMLFormElement>("#display-name-form");
+displayNameForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const input = document.querySelector<HTMLInputElement>("#display-name");
+  const status = document.querySelector<HTMLElement>("#display-name-status");
+  const button = displayNameForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (!input || !status || !button) return;
+  if (!input.value.trim()) {
+    status.textContent = "Enter a display name.";
+    return;
+  }
+  button.disabled = true;
+  status.textContent = "Saving...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/account/display-name`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ display_name: input.value.trim() }),
+    });
+    const result = await response.json() as ApiResult & { display_name?: string };
+    if (!response.ok || !result.display_name) {
+      throw new Error(result.detail || "Display name could not be saved.");
+    }
+    input.value = result.display_name;
+    const name = document.querySelector<HTMLElement>("#dashboard-name");
+    if (name) name.textContent = result.display_name;
+    status.textContent = "Display name saved.";
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Display name could not be saved.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+function setupWorkspaceReport<T>(
+  id: string, endpoint: string, key: "photographers" | "accounts",
+  statAttribute: "referralStat" | "adminStat", empty: string, render: (item: T) => HTMLElement,
+): () => Promise<void> {
+  let offset = 0;
+  let sequence = 0;
+  const list = document.querySelector<HTMLElement>(`#${id}-list`);
+  const status = document.querySelector<HTMLElement>(`#${id}-status`);
+  const more = document.querySelector<HTMLButtonElement>(`#${id}-more`);
+  const selector = statAttribute === "referralStat" ? "[data-referral-stat]" : "[data-admin-stat]";
+  async function load(append: boolean): Promise<void> {
+    if (!list || !status || !more) return;
+    const requestId = ++sequence;
+    if (!append) {
+      offset = 0;
+      list.replaceChildren();
+      more.hidden = true;
+      document.querySelectorAll<HTMLElement>(selector).forEach((element) => { element.textContent = "—"; });
+    }
+    more.disabled = true;
+    status.textContent = "Loading...";
+    try {
+      const response = await fetch(`${apiBaseUrl}${endpoint}?offset=${offset}`, { credentials: "include" });
+      const result = await response.json() as ApiResult & Record<string, unknown>;
+      if (requestId !== sequence) return;
+      if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Report could not be loaded.");
+      const items = result[key];
+      if (!Array.isArray(items) || typeof result.has_more !== "boolean") {
+        throw new Error("The server returned an invalid response.");
+      }
+      document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+        const value = result[element.dataset[statAttribute] || ""];
+        element.textContent = typeof value === "number" ? String(value) : "—";
+      });
+      (items as T[]).forEach((item) => list.appendChild(render(item)));
+      offset += items.length;
+      more.hidden = !result.has_more;
+      status.textContent = offset ? "" : empty;
+    } catch (error) {
+      if (requestId === sequence) status.textContent = error instanceof Error ? error.message : "Report could not be loaded.";
+    } finally {
+      if (requestId === sequence) more.disabled = false;
+    }
+  }
+  document.querySelector<HTMLButtonElement>(`#${id}-refresh`)?.addEventListener("click", () => void load(false));
+  more?.addEventListener("click", () => void load(true));
+  return () => load(false);
+}
+
+const loadAgentReferrals = setupWorkspaceReport<{ display_name: string }>(
+  "referrals", "/agent/referrals", "photographers", "referralStat", "No referred photographers yet.",
+  (photographer) => {
+    const item = document.createElement("li");
+    item.textContent = photographer.display_name;
+    return item;
+  },
+);
+const loadAdminAccounts = setupWorkspaceReport<{ id: string; display_name: string; role: string }>(
+  "admin-accounts", "/admin/workspace-report", "accounts", "adminStat", "No photographer or agent accounts.",
+  (account) => {
+    const card = document.createElement("article");
+    card.className = "submission-card";
+    const title = document.createElement("h3");
+    title.textContent = account.display_name;
+    const details = document.createElement("p");
+    details.textContent = `${account.role} · ${account.id}`;
+    card.append(title, details);
+    return card;
+  },
+);
+
 // Protected dashboard pages
 const dashboard = document.querySelector<HTMLElement>(
   "[data-required-role]"
@@ -917,6 +2257,8 @@ if (dashboard) {
     if (nameElement) {
       nameElement.textContent = user.display_name;
     }
+    const displayNameInput = document.querySelector<HTMLInputElement>("#display-name");
+    if (displayNameInput) displayNameInput.value = user.display_name;
 
     if (emailElement) {
       emailElement.textContent = user.email;
@@ -930,14 +2272,28 @@ if (dashboard) {
     }
 
     dashboard.hidden = false;
+    if (profilePhotoForm) void loadProfilePhoto();
 
     if (requiredRole === "photographer") {
       void Promise.all([
+        loadPhotographerOverview(),
         loadPhotographerCollections(),
         loadPhotographerPortfolio(),
         loadPhotographerSubmissions(),
+        loadWallet(),
+        refreshPhotographerOffers(),
+        refreshPhotographerPublications(),
+        refreshPhotographerPartnerships(),
       ]);
     }
+    if (requiredRole === "admin") {
+      void loadAdminAccounts();
+      void loadAdminSubmissions();
+      void refreshAdminOffers();
+      void refreshAdminPublications();
+      void refreshAdminPartnerships();
+    }
+    if (requiredRole === "agent") void loadAgentReferrals();
   })();
 }
 

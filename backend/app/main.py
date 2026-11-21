@@ -2,9 +2,12 @@
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
+from app.api.acquisitions import router as acquisitions_router
 from app.api.auth import router as auth_router
 from app.api.dashboard import router as dashboard_router
 from app.api.photographer import router as photographer_router
+from app.api.partnership import router as partnership_router
+from app.api.workspace import router as workspace_router
 from app.core.config import settings
 
 
@@ -18,7 +21,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
@@ -26,6 +29,9 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(dashboard_router)
 app.include_router(photographer_router)
+app.include_router(acquisitions_router)
+app.include_router(workspace_router)
+app.include_router(partnership_router)
 
 
 @app.get("/health", tags=["System"])

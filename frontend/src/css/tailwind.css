@@ -371,6 +371,66 @@ footer p, footer small {
   border-bottom: 1px solid #d5d4cc;
 }
 
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 48px;
+}
+
+.dashboard-nav {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 48px 0;
+}
+
+.dashboard-nav a {
+  padding: 10px 12px;
+  color: #55544d;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.dashboard-nav a:hover,
+.dashboard-nav a:focus-visible {
+  color: #171713;
+  background: #e4e3db;
+}
+
+.dashboard-content {
+  min-width: 0;
+}
+
+.dashboard-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 28px 0 20px;
+}
+
+.dashboard-overview div {
+  padding: 18px;
+  background: #fff;
+}
+
+.dashboard-overview strong,
+.dashboard-overview span {
+  display: block;
+}
+
+.dashboard-overview strong {
+  font-size: 24px;
+}
+
+.dashboard-overview span {
+  margin-top: 5px;
+  color: #68675f;
+  font-size: 12px;
+}
+
 .dashboard-welcome {
   padding: 90px 0 65px;
   border-bottom: 1px solid #d5d4cc;
@@ -394,6 +454,14 @@ footer p, footer small {
   max-width: 650px;
   padding: 55px 0;
   border-bottom: 1px solid #d5d4cc;
+}
+
+.profile-photo {
+  width: 112px;
+  height: 112px;
+  margin: 20px 0;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .account-detail {
@@ -462,6 +530,17 @@ button:disabled {
 
   .dashboard-welcome {
     padding: 65px 0 45px;
+  }
+
+  .dashboard-layout {
+    display: block;
+  }
+
+  .dashboard-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 20px 0 0;
   }
 
   .account-detail {
@@ -602,6 +681,26 @@ button:disabled {
   white-space: nowrap;
 }
 
+.portfolio-editor {
+  margin-top: 12px;
+}
+
+.portfolio-editor summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.portfolio-editor .workspace-form {
+  margin-top: 12px;
+}
+
+.portfolio-editor label input,
+.portfolio-editor label textarea {
+  display: block;
+  margin-top: 5px;
+}
+
 .workspace-panel {
   max-width: 760px;
   padding: 28px 0;
@@ -693,6 +792,60 @@ button:disabled {
   color: #68675f;
   font-size: 11px;
   line-height: 1.7;
+}
+
+.submission-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.submission-photo-grid figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.submission-photo-grid img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #e4e2da;
+}
+
+.submission-photo-grid figcaption {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+.acquisition-form {
+  margin-top: 14px;
+}
+
+.acquisition-form label input:not([type="checkbox"]),
+.acquisition-form label textarea,
+.acquisition-form label select {
+  display: block;
+  margin-top: 5px;
+}
+
+.offer-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.workspace-form .offer-checkbox input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+
+.agreement-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .portfolio-selection {

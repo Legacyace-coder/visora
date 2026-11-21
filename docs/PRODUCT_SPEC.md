@@ -9,6 +9,7 @@ Photographers submit photographs they own or are authorized to represent. The co
 ## Account Roles
 
 Three account roles:
+
 - admin: the only privileged role; assigned through trusted administration, never public registration
 - photographer: the default public account role
 - agent: a public account role for referral partners
@@ -24,11 +25,22 @@ No separate finance, reviewer or moderator roles.
 - Folder and collection submissions
 - Portfolio tracking
 - Pending, Processing, Accepted and Rejected statuses
+- Photographer-visible review feedback is separate from internal reviewer notes.
+- Rejections require feedback; accepted and rejected decisions are final.
+- Accepted acquisition offers credit the agreed USD amount to the available
+  wallet once; a wallet credit is not proof of withdrawal or payout.
 - Published work
 - Membership plans and subscriptions
 - Acquisition offers and contracts
 - USD earnings and transaction history
 - Withdrawal requests and status tracking
+
+The photographer dashboard displays server-side portfolio and submission totals.
+Photographers and agents can update display names, private profile photos and
+credentials. Agents can see referred display names and aggregate submission
+activity; administrators have platform counts and a read-only account list.
+Partnership applications support encrypted card proof and manual review.
+Commissions, withdrawals, and account suspension are not yet implemented.
 
 ## Admin Features
 
@@ -57,6 +69,7 @@ Example: $125.50 = 12550.
 Membership payments and photography acquisition payments must be separate transaction types.
 
 Admin balance adjustments must have two distinct actions:
+
 - Add to balance
 - Subtract from balance
 
@@ -65,6 +78,7 @@ Each adjustment must record the amount, reason, admin identity and timestamp.
 ## Payment Integration
 
 Paystack integration will follow the Northstar Capital architecture pattern:
+
 - Backend payment initialization
 - Server-side verification
 - Signed and idempotent webhooks
@@ -73,6 +87,7 @@ Paystack integration will follow the Northstar Capital architecture pattern:
 Photographer payouts remain admin controlled.
 
 Requested withdrawal methods:
+
 - USDT
 - Bank transfer
 - Cash delivery
@@ -81,11 +96,21 @@ Availability and compliance must be validated before launch.
 
 Any processing fee must be disclosed separately, including its purpose, amount, recipient, timing and refund policy. Do not silently deduct it from withdrawal principal.
 
+The requested withdrawal policy is not implemented: each request must be at
+least $15,000; a separately paid 25% fee is rounded to the nearest whole USD.
+It consists of a 15% withdrawal fee and a 10% company charge, not a tax.
+Non-partners pay for each withdrawal; partners pay again after a rejected,
+refunded request, and are exempt after their first successfully paid
+withdrawal. A rejected request requires a confirmed refund. Administrators
+configure the fee recipient and record separate fee-payment, payout and refund
+receipts. Users cannot cancel after paying the fee.
+
 ## Photography Rights
 
 Submission acceptance does not automatically transfer copyright or grant publication permission.
 
 Agreements must define:
+
 - Copyright assignment or licence
 - Exclusivity
 - Territory
@@ -95,6 +120,10 @@ Agreements must define:
 - Attribution
 
 Record consent and rights clearance before publication.
+Gallery permission is optional in each offer. When granted, visitors can view
+and download the original worldwide; copies saved by visitors may remain after
+the publication is removed. Permission ends when the agreement expires or the
+publication is withdrawn. Have agreement terms reviewed before use.
 
 ## Public Website
 

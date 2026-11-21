@@ -1,10 +1,11 @@
 import logging
+from datetime import date
 from pathlib import PurePath
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.api import auth
 from app.core.security import require_roles
@@ -20,8 +21,30 @@ MAX_FILE_SIZE = 25 * 1024 * 1024
 
 PHOTO_COLUMNS = (
     "id,photographer_id,storage_path,original_filename,mime_type,"
-    "file_size_bytes,width,height,title,description,created_at,updated_at"
+    "file_size_bytes,width,height,title,description,capture_date,location,keywords,"
+    "created_at,updated_at"
 )
+
+
+class PhotoMetadata(BaseModel):
+    title: str | None = Field(default=None, max_length=160)
+    description: str | None = Field(default=None, max_length=3000)
+    capture_date: date | None = None
+    location: str | None = Field(default=None, max_length=255)
+    keywords: list[str] = Field(default_factory=list, max_length=30)
+
+    @field_validator("title", "description", "location", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
+
+    @field_validator("keywords")
+    @classmethod
+    def normalize_keywords(cls, values):
+        keywords = [value.strip() for value in values]
+        if any(not value or len(value) > 80 for value in keywords):
+            raise ValueError("Keywords must be between 1 and 80 characters.")
+        return keywords
 
 
 class CollectionCreate(BaseModel):
@@ -158,7 +181,7 @@ def photographer_overview(
             "currency": "USD",
             "available": None,
             "pending": None,
-            "message": "Earnings become available when the financial ledger is implemented.",
+            "message": "Current wallet balances are available at /photographer/wallet.",
         },
     }
 
@@ -241,10 +264,24 @@ async def upload_photo(
     file: UploadFile = File(...),
     title: str | None = Form(default=None, max_length=160),
     description: str | None = Form(default=None, max_length=3000),
+    capture_date: str | None = Form(default=None),
+    location: str | None = Form(default=None, max_length=255),
+    keywords: str | None = Form(default=None, max_length=2429),
     current_user: dict = Depends(require_photographer),
 ):
     client = get_user_client(request)
     owner_id = current_user["id"]
+
+    try:
+        metadata = PhotoMetadata(
+            title=title,
+            description=description,
+            capture_date=capture_date or None,
+            location=location,
+            keywords=keywords.split(",") if keywords and keywords.strip() else [],
+        )
+    except ValidationError as error:
+        raise HTTPException(status_code=422, detail="Invalid photograph metadata.") from error
 
     original_filename = PurePath(file.filename or "upload").name.strip()
 
@@ -275,9 +312,6 @@ async def upload_photo(
     photo_id = str(uuid4())
     storage_path = f"{owner_id}/{photo_id}{extension}"
     uploaded = False
-    clean_title = title.strip() if title else None
-    clean_description = description.strip() if description else None
-
     try:
         client.storage.from_(BUCKET).upload(
             storage_path,
@@ -298,8 +332,7 @@ async def upload_photo(
                 "original_filename": original_filename[:255],
                 "mime_type": mime_type,
                 "file_size_bytes": len(content),
-                "title": clean_title or None,
-                "description": clean_description or None,
+                **metadata.model_dump(mode="json"),
             })
             .execute()
         )
@@ -324,6 +357,101 @@ async def upload_photo(
             status_code=400,
             detail="The photo could not be uploaded. Please try again.",
         )
+
+
+@router.put("/photos/{photo_id}")
+def update_photo(
+    photo_id: UUID,
+    payload: PhotoMetadata,
+    request: Request,
+    current_user: dict = Depends(require_photographer),
+):
+    client = get_user_client(request)
+    result = (
+        client.table("photographer_photos")
+        .update(payload.model_dump(mode="json"))
+        .eq("id", str(photo_id))
+        .eq("photographer_id", current_user["id"])
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Photo not found.")
+    return {"photo": result.data[0]}
+
+
+def cleanup_deleted_photos(client, owner_id: str) -> int:
+    pending = (
+        client.table("photograph_deletion_queue")
+        .select("photo_id,storage_path")
+        .eq("photographer_id", owner_id)
+        .execute()
+    )
+    for item in pending.data or []:
+        path = item["storage_path"]
+        if not path.startswith(f"{owner_id}/"):
+            raise RuntimeError("Invalid pending photograph storage path.")
+        client.storage.from_(BUCKET).remove([path])
+        (
+            client.table("photograph_deletion_queue")
+            .delete()
+            .eq("photo_id", item["photo_id"])
+            .eq("photographer_id", owner_id)
+            .execute()
+        )
+    return len(pending.data or [])
+
+
+@router.post("/photo-deletion-cleanup")
+def retry_photo_deletion_cleanup(
+    request: Request,
+    current_user: dict = Depends(require_photographer),
+):
+    client = get_user_client(request)
+    try:
+        count = cleanup_deleted_photos(client, current_user["id"])
+    except Exception as error:
+        logging.exception("Pending photograph storage cleanup failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Some originals could not be deleted. Please retry cleanup.",
+        ) from error
+    return {"cleaned_up": count}
+
+
+@router.delete("/photos/{photo_id}")
+def delete_photo(
+    photo_id: UUID,
+    request: Request,
+    current_user: dict = Depends(require_photographer),
+):
+    client = get_user_client(request)
+    owner_id = current_user["id"]
+    try:
+        result = client.rpc(
+            "delete_photographer_photo",
+            {"p_photo_id": str(photo_id), "p_photographer_id": owner_id},
+        ).execute()
+    except Exception as error:
+        if getattr(error, "code", None) == "23503":
+            raise HTTPException(
+                status_code=409,
+                detail="This photograph is in use and cannot be deleted.",
+            ) from error
+        logging.exception("Photograph deletion failed")
+        raise HTTPException(status_code=502, detail="The photograph could not be deleted.") from error
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Photo not found.")
+
+    try:
+        cleanup_deleted_photos(client, owner_id)
+    except Exception as error:
+        logging.exception("Deleted photograph storage cleanup failed")
+        raise HTTPException(
+            status_code=502,
+            detail="Photograph removed from your portfolio, but original cleanup is pending. Use retry cleanup.",
+        ) from error
+    return {"message": "Photograph deleted."}
 
 
 @router.post("/collections", status_code=201)
@@ -553,6 +681,7 @@ def create_submission(
 def list_submissions(
     request: Request,
     current_user: dict = Depends(require_photographer),
+    offset: int = Query(default=0, ge=0),
 ):
     client = get_user_client(request)
 
@@ -560,20 +689,23 @@ def list_submissions(
         client.table("submissions")
         .select(
             "id,submission_type,collection_id,title,cover_note,status,"
-            "submitted_at,reviewed_at,reviewer_notes"
+            "submitted_at,reviewed_at,photographer_feedback"
         )
         .eq("photographer_id", current_user["id"])
         .order("submitted_at", desc=True)
-        .limit(100)
+        .order("id", desc=True)
+        .range(offset, offset + 100)
         .execute()
     )
 
+    submissions = result.data or []
     return {
         "submissions": [
             {
                 **submission,
                 "status": normalize_submission_status(submission["status"]),
             }
-            for submission in (result.data or [])
-        ]
+            for submission in submissions[:100]
+        ],
+        "has_more": len(submissions) > 100,
     }

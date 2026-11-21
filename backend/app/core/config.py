@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     supabase_secret_key: str = ""
 
     paystack_secret_key: str = ""
+    partnership_proof_encryption_key: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

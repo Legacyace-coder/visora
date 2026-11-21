@@ -18,14 +18,48 @@
       </button>
     </header>
 
-    <section class="dashboard-welcome">
+    <div class="dashboard-layout">
+    <nav class="dashboard-nav" aria-label="Photographer workspace">
+      <a href="#overview">Overview</a>
+      <a href="#account">Account</a>
+      <a href="#portfolio-heading">Portfolio</a>
+      <a href="#upload-heading">Upload</a>
+      <a href="#collections-heading">Collections</a>
+      <a href="#submission-heading">Submit work</a>
+      <a href="#submission-history-heading">Submission history</a>
+      <a href="#wallet-heading">Wallet</a>
+      <a href="#offers-heading">Acquisitions</a>
+      <a href="#publications-heading">Publications</a>
+      <a href="#partnership-heading">Partnership</a>
+    </nav>
+    <div class="dashboard-content">
+    <section class="dashboard-welcome" id="overview">
       <p class="eyebrow">PHOTOGRAPHER WORKSPACE</p>
       <h1>Welcome back,<br><span id="dashboard-name">there</span>.</h1>
-      <p class="lead">Your account workspace is ready.</p>
+      <p class="lead">Your photography workspace at a glance.</p>
+      <div class="dashboard-overview" aria-label="Portfolio and submission statistics">
+        <div><strong data-overview-stat="photos">—</strong><span>Photographs</span></div>
+        <div><strong data-overview-stat="collections">—</strong><span>Collections</span></div>
+        <div><strong data-overview-stat="submissions">—</strong><span>Submissions</span></div>
+        <div><strong data-overview-stat="pending_submissions">—</strong><span>Pending</span></div>
+        <div><strong data-overview-stat="processing_submissions">—</strong><span>In review</span></div>
+        <div><strong data-overview-stat="accepted_submissions">—</strong><span>Accepted</span></div>
+        <div><strong data-overview-stat="rejected_submissions">—</strong><span>Rejected</span></div>
+      </div>
+      <button id="overview-refresh" class="button button-dark small" type="button">Refresh statistics</button>
+      <p id="overview-status" role="status" aria-live="polite"></p>
     </section>
 
-    <section class="dashboard-account">
+    <section class="dashboard-account" id="account">
       <p class="eyebrow">ACCOUNT DETAILS</p>
+      <img id="profile-photo" class="profile-photo" alt="Your profile photo" hidden>
+      <form id="profile-photo-form" class="workspace-form">
+        <label for="profile-photo-file">Profile photo (JPEG, PNG or WebP, up to 2 MB)</label>
+        <input id="profile-photo-file" name="file" type="file" accept="image/jpeg,image/png,image/webp" required>
+        <button class="button button-dark small" type="submit">Upload profile photo</button>
+        <button id="profile-photo-delete" class="button button-dark small" type="button" hidden>Remove profile photo</button>
+        <p id="profile-photo-status" role="status" aria-live="polite"></p>
+      </form>
 
       <div class="account-detail">
         <span>Account type</span>
@@ -41,6 +75,31 @@
         <span>Photographer referral code</span>
         <strong id="account-code">Loading...</strong>
       </div>
+      <form id="display-name-form" class="workspace-form">
+        <label for="display-name">Display name</label>
+        <input id="display-name" name="display_name" maxlength="100" required>
+        <button class="button button-dark small" type="submit">Save display name</button>
+        <p id="display-name-status" role="status" aria-live="polite"></p>
+      </form>
+      <form id="email-change-form" class="workspace-form">
+        <label for="new-email">New email address</label>
+        <input id="new-email" name="new_email" type="email" maxlength="254" autocomplete="email" required>
+        <label for="email-current-password">Current password</label>
+        <input id="email-current-password" name="current_password" type="password" maxlength="128" autocomplete="current-password" required>
+        <button class="button button-dark small" type="submit">Change email</button>
+        <p id="email-change-status" role="status" aria-live="polite"></p>
+      </form>
+      <form id="password-change-form" class="workspace-form">
+        <label for="password-current">Current password</label>
+        <input id="password-current" name="current_password" type="password" maxlength="128" autocomplete="current-password" required>
+        <label for="password-new">New password</label>
+        <input id="password-new" name="new_password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+        <label for="password-confirm">Confirm new password</label>
+        <input id="password-confirm" name="confirm_password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+        <button class="button button-dark small" type="submit">Change password</button>
+        <p id="password-change-status" role="status" aria-live="polite"></p>
+        <a id="credential-login" href="/login.html" hidden>Sign in</a>
+      </form>
     </section>
 
     <section class="portfolio-section" aria-labelledby="portfolio-heading">
@@ -74,6 +133,12 @@
           <input id="photo-title" name="title" maxlength="160">
           <label for="photo-description">Description <span>(optional)</span></label>
           <textarea id="photo-description" name="description" maxlength="3000"></textarea>
+          <label for="photo-capture-date">Capture date <span>(optional)</span></label>
+          <input id="photo-capture-date" name="capture_date" type="date">
+          <label for="photo-location">Location <span>(optional)</span></label>
+          <input id="photo-location" name="location" maxlength="255">
+          <label for="photo-keywords">Keywords <span>(optional, comma-separated)</span></label>
+          <input id="photo-keywords" name="keywords" maxlength="2429">
           <button class="button button-dark" type="submit">Upload photograph</button>
           <p id="photo-upload-status" role="status" aria-live="polite"></p>
         </form>
@@ -120,22 +185,60 @@
       <p id="portfolio-status" class="portfolio-status" role="status" aria-live="polite">
         Loading your photographs...
       </p>
+      <button id="photo-cleanup-button" class="button button-dark small" type="button">Retry pending original cleanup</button>
+      <p id="photo-cleanup-status" role="status" aria-live="polite"></p>
 
       <div id="portfolio-grid" class="portfolio-grid"></div>
 
       <section class="workspace-panel" aria-labelledby="submission-history-heading">
         <h3 id="submission-history-heading">Submission history</h3>
+        <p class="workspace-hint">Refresh to see the latest review.</p>
+        <button id="submission-refresh" class="button button-dark small" type="button">Refresh submissions</button>
         <div id="submission-list" class="submission-list" aria-live="polite"></div>
+        <button id="submission-more" class="button button-dark small" type="button" hidden>Load more submissions</button>
+      </section>
+
+      <section class="workspace-panel" aria-labelledby="wallet-heading">
+        <h3 id="wallet-heading">Wallet</h3>
+        <p id="wallet-status" role="status" aria-live="polite">Loading wallet...</p>
+        <p class="workspace-hint">Wallet credits are not confirmation that a withdrawal has been paid.</p>
+      </section>
+
+      <section class="workspace-panel" aria-labelledby="offers-heading">
+        <h3 id="offers-heading">Acquisition offers and history</h3>
+        <button id="photographer-offers-refresh" class="button button-dark small" type="button">Refresh offers</button>
+        <p id="photographer-offers-status" role="status" aria-live="polite"></p>
+        <div id="photographer-offers" class="submission-list"></div>
+        <button id="photographer-offers-more" class="button button-dark small" type="button" hidden>Load more offers</button>
+      </section>
+
+      <section class="workspace-panel" aria-labelledby="publications-heading">
+        <h3 id="publications-heading">Publication history</h3>
+        <button id="photographer-publications-refresh" class="button button-dark small" type="button">Refresh publications</button>
+        <p id="photographer-publications-status" role="status" aria-live="polite"></p>
+        <div id="photographer-publications" class="submission-list"></div>
+        <button id="photographer-publications-more" class="button button-dark small" type="button" hidden>Load more publications</button>
+      </section>
+
+      <section class="workspace-panel" aria-labelledby="partnership-heading">
+        <h3 id="partnership-heading">Partnership verification</h3>
+        <p class="workspace-hint">Submit either your purchased card code or an image of the card. Administrators can view it for manual review; records are retained for audit.</p>
+        <form id="partnership-form" class="workspace-form">
+          <label for="partnership-code">Card code</label>
+          <input id="partnership-code" name="code" maxlength="128" autocomplete="off">
+          <label for="partnership-file">Card image (JPEG, PNG or WebP, up to 2 MB)</label>
+          <input id="partnership-file" name="file" type="file" accept="image/jpeg,image/png,image/webp">
+          <button class="button button-dark" type="submit">Submit for verification</button>
+          <p id="partnership-form-status" role="status" aria-live="polite"></p>
+        </form>
+        <button id="photographer-partnerships-refresh" class="button button-dark small" type="button">Refresh applications</button>
+        <p id="photographer-partnerships-status" role="status" aria-live="polite"></p>
+        <div id="photographer-partnerships" class="submission-list"></div>
+        <button id="photographer-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
       </section>
     </section>
-    <section class="dashboard-notice">
-      <p class="eyebrow">YOUR WORKSPACE</p>
-      <h2>More is taking shape.</h2>
-      <p>
-        Your account is connected. The tools and features for this workspace
-        will be introduced as the platform is built.
-      </p>
-    </section>
+    </div>
+    </div>
 
     <footer class="dashboard-footer">
       <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
