@@ -1863,48 +1863,124 @@ async function loadPhotographerPortfolio(): Promise<void> {
 
 const photoUploadForm =
   document.querySelector<HTMLFormElement>("#photo-upload-form");
+const photoFileInput = document.querySelector<HTMLInputElement>("#photo-file");
+const photoSelectionStatus = document.querySelector<HTMLElement>("#photo-selection-status");
+const photoUploadResults = document.querySelector<HTMLElement>("#photo-upload-results");
+let pendingPhotoUploads: File[] = [];
+let uncertainPhotoUploads: string[] = [];
+let photoUploadInProgress = false;
+
+photoFileInput?.addEventListener("change", () => {
+  pendingPhotoUploads = Array.from(photoFileInput.files || []);
+  uncertainPhotoUploads = [];
+  if (photoUploadResults) photoUploadResults.replaceChildren();
+  const status = document.querySelector<HTMLElement>("#photo-upload-status");
+  if (status) status.textContent = "";
+  if (photoSelectionStatus) {
+    photoSelectionStatus.textContent = pendingPhotoUploads.length
+      ? `${pendingPhotoUploads.length} photograph${pendingPhotoUploads.length === 1 ? "" : "s"} selected.`
+      : "No photographs selected.";
+  }
+});
+
+window.addEventListener("beforeunload", (event) => {
+  if (!photoUploadInProgress) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 photoUploadForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const status = document.querySelector<HTMLElement>("#photo-upload-status");
-  const submitButton =
-    photoUploadForm.querySelector<HTMLButtonElement>('button[type="submit"]');
-
-  if (!status) return;
+  if (!status || !photoFileInput || !photoUploadResults || !photoSelectionStatus || photoUploadInProgress) return;
 
   const formData = new FormData(photoUploadForm);
+  if (!pendingPhotoUploads.length || pendingPhotoUploads.length > 50) {
+    status.textContent = "Select between 1 and 50 photographs.";
+    return;
+  }
+  const invalidFile = pendingPhotoUploads.find((file) => file.size === 0 || file.size > 25 * 1024 * 1024);
+  if (invalidFile) {
+    status.textContent = `${invalidFile.name}: images must be non-empty and no larger than 25 MB.`;
+    return;
+  }
   const keywordText = String(formData.get("keywords") || "").trim();
   const keywords = keywordText ? keywordText.split(",").map((word) => word.trim()) : [];
   if (keywords.length > 30 || keywords.some((word) => !word || word.length > 80)) {
     status.textContent = "Enter up to 30 keywords, each 1 to 80 characters long.";
     return;
   }
-  status.textContent = "Uploading photograph...";
-  if (submitButton) submitButton.disabled = true;
-
+  const files = pendingPhotoUploads.slice();
+  const failed: File[] = [];
+  let uploaded = 0;
+  let connectionLost = false;
+  const controls = Array.from(photoUploadForm.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>("input, textarea, button"));
+  const disabledStates = controls.map((control) => control.disabled);
+  controls.forEach((control) => { control.disabled = true; });
+  photoUploadInProgress = true;
+  photoUploadResults.replaceChildren();
+  const showUncertainUpload = (filename: string): void => {
+    const item = document.createElement("li");
+    item.textContent = `${filename}: upload status is unknown. Check your portfolio before selecting this file again.`;
+    photoUploadResults.appendChild(item);
+  };
+  uncertainPhotoUploads.forEach(showUncertainUpload);
   try {
-    const response = await fetch(`${apiBaseUrl}/photographer/photos`, {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    });
-    const result = (await response.json()) as ApiResult;
-
-    if (!response.ok) {
-      throw new Error(result.detail || "The photograph could not be uploaded.");
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      status.textContent = `Uploading ${index + 1} of ${files.length}: ${file.name}`;
+      formData.set("file", file);
+      let response: Response;
+      try {
+        response = await fetch(`${apiBaseUrl}/photographer/photos`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        });
+      } catch (error) {
+        console.error("Photo upload connection failed.", error);
+        uncertainPhotoUploads.push(file.name);
+        showUncertainUpload(file.name);
+        failed.push(...files.slice(index + 1));
+        connectionLost = true;
+        break;
+      }
+      if (response.ok) {
+        uploaded += 1;
+      } else if (response.status === 408 || response.status >= 500) {
+        console.error(`Photo upload returned HTTP ${response.status}; its outcome is unknown.`);
+        uncertainPhotoUploads.push(file.name);
+        showUncertainUpload(file.name);
+        failed.push(...files.slice(index + 1));
+        connectionLost = true;
+        break;
+      } else {
+        let detail = `Upload failed (HTTP ${response.status}).`;
+        try {
+          const result = await response.json() as ApiResult;
+          if (typeof result.detail === "string") detail = result.detail;
+        } catch (error) {
+          console.error("Could not read the photo upload error response.", error);
+        }
+        failed.push(file);
+        const item = document.createElement("li");
+        item.textContent = `${file.name}: ${detail}`;
+        photoUploadResults.appendChild(item);
+      }
     }
-
-    photoUploadForm.reset();
-    status.textContent = "Photograph uploaded.";
-    await Promise.all([loadPhotographerPortfolio(), loadPhotographerOverview()]);
-  } catch (error) {
-    status.textContent =
-      error instanceof Error
-        ? error.message
-        : "The photograph could not be uploaded.";
+    pendingPhotoUploads = failed;
+    if (!failed.length) {
+      photoUploadForm.reset();
+      photoSelectionStatus.textContent = "No photographs selected.";
+    } else {
+      photoSelectionStatus.textContent = `${failed.length} photograph${failed.length === 1 ? "" : "s"} remaining. Submit again to retry; choosing new files replaces this selection.`;
+    }
+    status.textContent = `${uploaded} of ${files.length} photographs uploaded.${uncertainPhotoUploads.length ? " Some uploads could not be confirmed; check your portfolio." : ""}${failed.length ? " See results below and retry the remaining photographs." : ""}`;
+    if (uploaded || connectionLost) await Promise.all([loadPhotographerPortfolio(), loadPhotographerOverview()]);
   } finally {
-    if (submitButton) submitButton.disabled = false;
+    photoUploadInProgress = false;
+    controls.forEach((control, index) => { control.disabled = disabledStates[index]; });
   }
 });
 

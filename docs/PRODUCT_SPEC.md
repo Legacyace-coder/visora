@@ -36,6 +36,10 @@ No separate finance, reviewer or moderator roles.
 - Withdrawal requests and status tracking
 
 The photographer dashboard displays server-side portfolio and submission totals.
+Photographers can select up to 50 photos per portfolio upload. Each image is
+uploaded separately (maximum 25 MB), with shared optional metadata; failed
+uploads can be retried without repeating confirmed successes. Uploading does
+not submit work for review.
 Photographers and agents can update display names, private profile photos and
 credentials. Agents can see referred display names and aggregate submission
 activity; administrators have platform counts and a read-only account list.
