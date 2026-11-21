@@ -1750,6 +1750,62 @@ partnershipForm?.addEventListener("submit", async (event) => {
 });
 
 let photographerOverviewRequest = 0;
+let weeklyTargetRequest = 0;
+let weeklyTargetTimer: number | undefined;
+
+async function loadWeeklyTarget(): Promise<void> {
+  const section = document.querySelector<HTMLElement>("#weekly-target");
+  const status = document.querySelector<HTMLElement>("#weekly-target-status");
+  const count = document.querySelector<HTMLElement>("#weekly-target-count");
+  const progress = document.querySelector<HTMLProgressElement>("#weekly-target-progress");
+  const remaining = document.querySelector<HTMLElement>("#weekly-target-remaining");
+  const period = document.querySelector<HTMLElement>("#weekly-target-period");
+  if (!section || !status || !count || !progress || !remaining || !period) return;
+
+  const requestId = ++weeklyTargetRequest;
+  window.clearTimeout(weeklyTargetTimer);
+  section.hidden = true;
+  status.textContent = "Loading weekly target...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/weekly-target`, { credentials: "include" });
+    const result = await response.json() as {
+      is_partner?: boolean; target?: number; approved_count?: number;
+      week_start?: string; week_end?: string; detail?: string;
+    };
+    if (requestId !== weeklyTargetRequest) return;
+    if (!response.ok) throw new Error(result.detail || "Weekly target could not be loaded.");
+    if (result.is_partner === false) {
+      status.textContent = "";
+      return;
+    }
+    const target = result.target;
+    const approved = result.approved_count;
+    const start = new Date(result.week_start || "");
+    const end = new Date(result.week_end || "");
+    if (result.is_partner !== true || typeof target !== "number" || !Number.isSafeInteger(target) || target <= 0 ||
+        typeof approved !== "number" || !Number.isSafeInteger(approved) || approved < 0 ||
+        !Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end) {
+      throw new Error("Weekly target could not be loaded.");
+    }
+    const dateFormat = new Intl.DateTimeFormat("en", {
+      timeZone: "UTC", month: "short", day: "numeric", year: "numeric",
+    });
+    count.textContent = `${approved} / ${target}`;
+    progress.max = target;
+    progress.value = Math.min(approved, target);
+    progress.setAttribute("aria-valuetext", `${approved} of ${target} approved photographs`);
+    const left = Math.max(0, target - approved);
+    remaining.textContent = left ? `${left} more approved photograph${left === 1 ? "" : "s"} to reach your target.` : "Weekly target reached.";
+    period.textContent = `Week of ${dateFormat.format(start)}. Resets ${dateFormat.format(end)} at 00:00 UTC.`;
+    section.hidden = false;
+    status.textContent = "";
+    const untilReset = end.getTime() - Date.now();
+    weeklyTargetTimer = window.setTimeout(() => void loadWeeklyTarget(), untilReset > 0 ? untilReset + 1000 : 60000);
+  } catch (error) {
+    if (requestId !== weeklyTargetRequest) return;
+    status.textContent = error instanceof Error ? error.message : "Weekly target could not be loaded.";
+  }
+}
 
 async function loadPhotographerOverview(): Promise<void> {
   const status = document.querySelector<HTMLElement>("#overview-status");
@@ -1779,7 +1835,14 @@ async function loadPhotographerOverview(): Promise<void> {
 }
 
 document.querySelector<HTMLButtonElement>("#overview-refresh")
-  ?.addEventListener("click", () => void loadPhotographerOverview());
+  ?.addEventListener("click", () => {
+    void loadPhotographerOverview();
+    void loadWeeklyTarget();
+  });
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && document.querySelector("#weekly-target")) void loadWeeklyTarget();
+});
 
 async function loadPhotographerPortfolio(): Promise<void> {
   const status = document.querySelector<HTMLElement>("#portfolio-status");
@@ -2219,6 +2282,8 @@ collectionSubmissionForm?.addEventListener("submit", async (event) => {
 });
 const profilePhotoForm = document.querySelector<HTMLFormElement>("#profile-photo-form");
 const profilePhotoImage = document.querySelector<HTMLImageElement>("#profile-photo");
+const menuProfilePhoto = document.querySelector<HTMLImageElement>("#menu-profile-photo");
+const menuProfilePlaceholder = document.querySelector<HTMLElement>("#menu-profile-placeholder");
 const profilePhotoStatus = document.querySelector<HTMLElement>("#profile-photo-status");
 const profilePhotoDelete = document.querySelector<HTMLButtonElement>("#profile-photo-delete");
 let profilePhotoUrl: string | null = null;
@@ -2235,6 +2300,11 @@ async function loadProfilePhoto(): Promise<boolean> {
       profilePhotoUrl = null;
       profilePhotoImage.removeAttribute("src");
       profilePhotoImage.hidden = true;
+      if (menuProfilePhoto) {
+        menuProfilePhoto.removeAttribute("src");
+        menuProfilePhoto.hidden = true;
+      }
+      if (menuProfilePlaceholder) menuProfilePlaceholder.hidden = false;
       profilePhotoDelete.hidden = true;
       return true;
     }
@@ -2246,6 +2316,11 @@ async function loadProfilePhoto(): Promise<boolean> {
     profilePhotoUrl = url;
     profilePhotoImage.src = url;
     profilePhotoImage.hidden = false;
+    if (menuProfilePhoto) {
+      menuProfilePhoto.src = url;
+      menuProfilePhoto.hidden = false;
+    }
+    if (menuProfilePlaceholder) menuProfilePlaceholder.hidden = true;
     profilePhotoDelete.hidden = false;
     return true;
   } catch (error) {
@@ -2701,6 +2776,7 @@ if (dashboard) {
     if (requiredRole === "photographer") {
       void Promise.all([
         loadPhotographerOverview(),
+        loadWeeklyTarget(),
         loadPhotographerCollections(),
         loadPhotographerPortfolio(),
         loadPhotographerSubmissions(),

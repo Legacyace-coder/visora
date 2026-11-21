@@ -21,8 +21,13 @@
     </header>
 
     <div class="dashboard-layout">
-    <nav class="dashboard-nav" aria-label="Photographer workspace">
+    <nav class="dashboard-nav dashboard-nav-with-profile" aria-label="Photographer workspace">
+      <div class="dashboard-nav-profile" aria-hidden="true">
+        <img id="menu-profile-photo" alt="" hidden>
+        <span id="menu-profile-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
+      </div>
       <p class="dashboard-nav-label">Your workspace</p>
+      <div class="dashboard-nav-links">
       <a href="#overview">Overview</a>
       <a href="#account">Account</a>
       <a href="#portfolio-heading">Portfolio</a>
@@ -34,6 +39,7 @@
       <a href="#offers-heading">Acquisitions</a>
       <a href="#publications-heading">Publications</a>
       <a href="#partnership-heading">Partnership</a>
+      </div>
     </nav>
     <div class="dashboard-content">
     <section class="dashboard-welcome" id="overview" data-dashboard-view>
@@ -54,6 +60,18 @@
         <div><strong data-overview-stat="accepted_submissions">—</strong><span>Accepted</span></div>
         <div><strong data-overview-stat="rejected_submissions">—</strong><span>Rejected</span></div>
       </div>
+      <section id="weekly-target" class="weekly-target" aria-labelledby="weekly-target-heading" hidden>
+        <div class="weekly-target-heading">
+          <div><p class="weekly-target-eyebrow">PARTNER PROGRESS</p><h2 id="weekly-target-heading">Your weekly target</h2></div>
+          <strong id="weekly-target-count"></strong>
+        </div>
+        <label for="weekly-target-progress">Approved photographs</label>
+        <progress id="weekly-target-progress"></progress>
+        <p id="weekly-target-remaining"></p>
+        <p id="weekly-target-period"></p>
+        <p>Only first-time approvals after partnership approval count. Pending or rejected photos do not count.</p>
+      </section>
+      <p id="weekly-target-status" role="status" aria-live="polite"></p>
       <button id="overview-refresh" class="button button-dark small" type="button">Refresh statistics</button>
       <p id="overview-status" role="status" aria-live="polite"></p>
     </section>

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, Field, ValidationError, field_validator
 from supabase_auth.errors import AuthApiError
 
 from app.api import auth
@@ -74,6 +74,33 @@ def workspace_rpc(request: Request, name: str, params: dict):
         if getattr(error, "code", None) == "22023":
             raise HTTPException(422, "Invalid workspace request.") from error
         raise HTTPException(502, "The workspace operation could not be completed.") from error
+
+
+class WeeklyTarget(BaseModel):
+    target: int = Field(strict=True, gt=0)
+    approved_count: int = Field(strict=True, ge=0)
+    week_start: AwareDatetime
+    week_end: AwareDatetime
+
+
+@router.get("/photographer/weekly-target")
+def photographer_weekly_target(
+    request: Request,
+    current_user: dict = Depends(require_roles("photographer")),
+):
+    result = workspace_rpc(request, "photographer_weekly_target", {})
+    if isinstance(result, dict) and result.get("is_partner") is False:
+        return {"is_partner": False}
+    try:
+        if not isinstance(result, dict) or result.get("is_partner") is not True:
+            raise ValueError("Invalid partnership status")
+        target = WeeklyTarget.model_validate(result)
+        if target.week_start >= target.week_end:
+            raise ValueError("Invalid weekly target period")
+    except (ValidationError, ValueError) as error:
+        logger.error("Weekly target returned an invalid response: %s", error)
+        raise HTTPException(502, "Weekly target could not be loaded.") from error
+    return {"is_partner": True, **target.model_dump()}
 
 
 @router.put("/account/display-name")

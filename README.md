@@ -84,6 +84,9 @@ migrations in a non-production project before using this workflow.
 The workspace migrations add profile settings, scoped agent referral reports,
 a read-only administrator account overview and manual partnership review.
 Agent reports include referred display names and aggregate submission activity.
+Apply the weekly-target migration to enable partner progress on photographer
+dashboards. The target is 200 unique first-time approved photos per UTC week
+after partnership approval; submission approval counts every included photo.
 Profile photos are private, stored in the database, and limited to 2 MB. Email
 and password changes require the current password; configure and verify the
 Supabase email-confirmation settings before deployment.

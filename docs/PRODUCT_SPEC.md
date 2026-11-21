@@ -40,6 +40,11 @@ Photographers can select up to 50 photos per portfolio upload. Each image is
 uploaded separately (maximum 25 MB), with shared optional metadata; failed
 uploads can be retried without repeating confirmed successes. Uploading does
 not submit work for review.
+Approved partners have a weekly target of 200 approved photos, shown on their
+dashboard. Weeks run Monday 00:00 UTC to the next Monday 00:00 UTC. Each photo
+counts only in the week of its first accepted submission, and only if that
+first approval was at or after partnership approval. Pending and rejected
+submissions do not count; counts may exceed the target.
 Photographers and agents can update display names, private profile photos and
 credentials. Agents can see referred display names and aggregate submission
 activity; administrators have platform counts and a read-only account list.

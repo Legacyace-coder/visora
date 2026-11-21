@@ -54,6 +54,50 @@ def test_referral_report_denies_non_agents(client, monkeypatch):
     assert client.get("/agent/referrals").status_code == 403
 
 
+@pytest.mark.parametrize("role", ["agent", "admin"])
+def test_weekly_target_requires_photographer(client, monkeypatch, role):
+    set_role(monkeypatch, role)
+    assert client.get("/photographer/weekly-target").status_code == 403
+
+
+def test_weekly_target_returns_partner_progress(client, monkeypatch):
+    set_role(monkeypatch, "photographer")
+    calls = []
+
+    def rpc(request, name, params):
+        calls.append((name, params))
+        return {
+            "is_partner": True, "target": 200, "approved_count": 215,
+            "week_start": "2026-11-16T00:00:00+00:00",
+            "week_end": "2026-11-23T00:00:00+00:00",
+        }
+
+    monkeypatch.setattr(workspace, "workspace_rpc", rpc)
+    response = client.get("/photographer/weekly-target")
+    assert response.status_code == 200
+    assert response.json()["approved_count"] == 215
+    assert response.json()["target"] == 200
+    assert calls == [("photographer_weekly_target", {})]
+
+
+def test_weekly_target_for_non_partner(client, monkeypatch):
+    set_role(monkeypatch, "photographer")
+    monkeypatch.setattr(workspace, "workspace_rpc", lambda *args: {"is_partner": False})
+    assert client.get("/photographer/weekly-target").json() == {"is_partner": False}
+
+
+@pytest.mark.parametrize("result", [
+    None,
+    {"is_partner": True, "target": 200, "approved_count": -1},
+    {"is_partner": True, "target": 200, "approved_count": 1,
+     "week_start": "2026-11-23T00:00:00Z", "week_end": "2026-11-16T00:00:00Z"},
+])
+def test_weekly_target_rejects_invalid_database_response(client, monkeypatch, result):
+    set_role(monkeypatch, "photographer")
+    monkeypatch.setattr(workspace, "workspace_rpc", lambda *args: result)
+    assert client.get("/photographer/weekly-target").status_code == 502
+
+
 def test_referral_report_paginates_without_disclosing_extra_row(client, monkeypatch):
     set_role(monkeypatch, "agent")
     calls = []

@@ -1627,6 +1627,23 @@ html {
   text-transform: uppercase;
 }
 
+.dashboard-nav-profile { margin: 4px 12px 16px; }
+.dashboard-nav-profile img,
+.dashboard-nav-profile span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--workspace-border);
+  border-radius: 50%;
+  background: var(--workspace-bg);
+  color: var(--workspace-muted);
+  object-fit: cover;
+}
+.dashboard-nav-profile svg { width: 30px; height: 30px; }
+.dashboard-nav-links { display: contents; }
+
 .dashboard-nav a {
   padding: 12px;
   border-radius: 7px;
@@ -1694,6 +1711,21 @@ html {
 .dashboard-welcome .dashboard-overview div { border-color: rgba(255, 255, 255, .24); background: rgba(255, 255, 255, .12); }
 .dashboard-welcome .dashboard-overview span { color: #e2e8de; }
 .dashboard-welcome .button-dark { color: #24302c; background: #fff; }
+.weekly-target {
+  margin: 24px 0;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .12);
+}
+.weekly-target-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.weekly-target-heading h2 { margin: 4px 0 16px; font-size: 22px; font-weight: 500; }
+.weekly-target-heading strong { font-size: 22px; white-space: nowrap; }
+.weekly-target-eyebrow { margin: 0; color: #d3ddc8; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.weekly-target label, .weekly-target > p { font-size: 12px; line-height: 1.6; color: #e2e8de; }
+.weekly-target progress { display: block; width: 100%; height: 10px; margin: 8px 0 12px; accent-color: #b7cf9f; }
+.weekly-target > p { margin: 5px 0; }
+#weekly-target-status { color: #e2e8de; font-size: 12px; }
 .dashboard-content :is(h2, h3) { line-height: 1.1; }
 .dashboard-content > .workspace-panel > :is(h2, h3) { margin: 0 0 20px; font-size: clamp(30px, 4vw, 44px); font-weight: 500; letter-spacing: -.05em; }
 .dashboard-content .button { border-radius: 6px; }
@@ -1735,6 +1767,17 @@ html {
   }
   .dashboard-nav-label { display: none; }
   .dashboard-nav a { flex: 0 0 auto; white-space: nowrap; }
+  .dashboard-nav-with-profile {
+    flex-direction: column;
+    align-items: stretch;
+    overflow: visible;
+  }
+  .dashboard-nav-with-profile .dashboard-nav-profile { margin: 8px 12px 10px; }
+  .dashboard-nav-with-profile .dashboard-nav-profile img,
+  .dashboard-nav-with-profile .dashboard-nav-profile span { width: 48px; height: 48px; }
+  .dashboard-nav-with-profile .dashboard-nav-profile svg { width: 24px; height: 24px; }
+  .dashboard-nav-with-profile .dashboard-nav-label { display: block; margin-bottom: 4px; }
+  .dashboard-nav-links { display: flex; overflow-x: auto; }
   .dashboard-content { padding-top: 18px; }
 }
 
