@@ -217,7 +217,7 @@ def get_profile_for_token(client, access_token: str) -> dict:
 
         result = (
             client.table("profiles")
-            .select("id,role,display_name,referral_code,agent_code")
+            .select("id,role,display_name,referral_code,agent_code,suspended_at,suspension_reason")
             .eq("id", user.id)
             .maybe_single()
             .execute()
@@ -234,6 +234,8 @@ def get_profile_for_token(client, access_token: str) -> dict:
             "display_name": profile["display_name"],
             "referral_code": profile.get("referral_code"),
             "agent_code": profile.get("agent_code"),
+            "suspended_at": profile.get("suspended_at"),
+            "suspension_reason": profile.get("suspension_reason"),
         }
 
     except HTTPException:

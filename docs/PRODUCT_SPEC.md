@@ -40,7 +40,8 @@ Photographers and agents can update display names, private profile photos and
 credentials. Agents can see referred display names and aggregate submission
 activity; administrators have platform counts and a read-only account list.
 Partnership applications support encrypted card proof and manual review.
-Commissions, withdrawals, and account suspension are not yet implemented.
+Commissions remain separate from the implemented withdrawal and suspension
+workflows.
 
 ## Admin Features
 

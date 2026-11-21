@@ -202,6 +202,25 @@
         <h3 id="wallet-heading">Wallet</h3>
         <p id="wallet-status" role="status" aria-live="polite">Loading wallet...</p>
         <p class="workspace-hint">Wallet credits are not confirmation that a withdrawal has been paid.</p>
+        <form id="withdrawal-form" class="workspace-form">
+          <label for="withdrawal-amount">Amount (USD cents)</label>
+          <input id="withdrawal-amount" name="amount_cents" inputmode="numeric" pattern="[1-9][0-9]*" required placeholder="1500000">
+          <label for="withdrawal-method">Withdrawal method</label>
+          <select id="withdrawal-method" name="method" required>
+            <option value="USDT">USDT</option>
+            <option value="bank_transfer">Bank transfer</option>
+            <option value="cash_delivery">Cash delivery</option>
+          </select>
+          <label for="withdrawal-destination">Destination</label>
+          <textarea id="withdrawal-destination" name="destination" maxlength="1000" required></textarea>
+          <p class="workspace-hint">Minimum: $15,000. The separate fee is 25%: 15% withdrawal fee and 10% company charge. It is shown before submission and paid independently.</p>
+          <button class="button button-dark" type="submit">Request withdrawal</button>
+          <p id="withdrawal-form-status" role="status" aria-live="polite"></p>
+        </form>
+        <button id="withdrawals-refresh" class="button button-dark small" type="button">Refresh withdrawals</button>
+        <p id="withdrawals-status" role="status" aria-live="polite"></p>
+        <div id="withdrawals" class="submission-list"></div>
+        <button id="withdrawals-more" class="button button-dark small" type="button" hidden>Load more withdrawals</button>
       </section>
 
       <section class="workspace-panel" aria-labelledby="offers-heading">

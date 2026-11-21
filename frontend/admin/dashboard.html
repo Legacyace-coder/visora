@@ -27,6 +27,7 @@
       <a href="#admin-offers-heading">Acquisitions</a>
       <a href="#admin-publications-heading">Publications</a>
       <a href="#admin-partnerships-heading">Partnership review</a>
+      <a href="#admin-withdrawals-heading">Withdrawals</a>
       <a href="#partnership-settings">Partnership settings</a>
     </nav>
     <div class="dashboard-content">
@@ -108,6 +109,21 @@
       <p id="admin-partnerships-status" role="status" aria-live="polite"></p>
       <div id="admin-partnerships" class="submission-list"></div>
       <button id="admin-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
+    </section>
+
+    <section class="workspace-panel" aria-labelledby="admin-withdrawals-heading">
+      <p class="eyebrow">WITHDRAWALS AND FEES</p>
+      <h2 id="admin-withdrawals-heading">Withdrawal management</h2>
+      <form id="fee-recipient-form" class="workspace-form">
+        <label for="withdrawal-fee-recipient">Fee recipient account</label>
+        <input id="withdrawal-fee-recipient" name="recipient" maxlength="1000" placeholder="Bank account, USDT address or cash delivery instructions">
+        <button class="button button-dark small" type="submit">Save fee recipient</button>
+        <p id="fee-recipient-status" role="status" aria-live="polite"></p>
+      </form>
+      <button id="admin-withdrawals-refresh" class="button button-dark small" type="button">Refresh withdrawals</button>
+      <p id="admin-withdrawals-status" role="status" aria-live="polite"></p>
+      <div id="admin-withdrawals" class="submission-list"></div>
+      <button id="admin-withdrawals-more" class="button button-dark small" type="button" hidden>Load more withdrawals</button>
     </section>
 
     <section class="admin-settings" id="partnership-settings">

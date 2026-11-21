@@ -87,8 +87,15 @@ recorded. Proofs are retained until an administrator deletes them with a
 reason after review; the application and audit record remain, and backups may
 retain encrypted copies. Approval issues an ID but does not verify payment
 automatically.
-Withdrawals, fees and account suspension are not yet implemented. Test all
-migrations, authentication settings and permissions in staging before deployment.
+Withdrawals, separately paid withdrawal fees and audited account suspension are
+implemented through the latest migration. The minimum withdrawal is $15,000;
+the 25% advance fee is split into a 15% withdrawal fee and 10% company charge,
+with the nearest-whole-dollar rounding and partner exemption/return rules
+enforced by SQL. Administrators must configure a fee recipient and manually
+verify fee, payout and refund receipts. Suspended accounts retain read-only
+access and cannot submit mutations. Apply and test the migration and all
+authentication, permission and concurrent-withdrawal scenarios in staging before
+deployment.
 
 ## Important
 

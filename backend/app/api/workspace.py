@@ -2,6 +2,7 @@ import base64
 import binascii
 from io import BytesIO
 import logging
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from PIL import Image, UnidentifiedImageError
@@ -51,6 +52,16 @@ class CredentialUpdate(BaseModel):
     @classmethod
     def normalize_email(cls, value: str | None) -> str | None:
         return auth.RegistrationRequest.normalize_email(value) if value is not None else None
+
+
+class AccountSuspensionUpdate(BaseModel):
+    suspended: bool
+    reason: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def normalize_reason(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
 
 
 def workspace_rpc(request: Request, name: str, params: dict):
@@ -248,3 +259,26 @@ def admin_workspace_report(
         "accounts": accounts[:25],
         "has_more": len(accounts) > 25,
     }
+
+
+@router.put("/admin/accounts/{account_id}/suspension")
+def set_account_suspension(
+    account_id: str,
+    payload: AccountSuspensionUpdate,
+    request: Request,
+    current_user: dict = Depends(require_roles("admin")),
+):
+    try:
+        account_uuid = UUID(account_id)
+    except ValueError as error:
+        raise HTTPException(422, "The account ID is invalid.") from error
+    if payload.suspended and not payload.reason:
+        raise HTTPException(422, "A suspension reason is required.")
+    result = workspace_rpc(request, "set_account_suspension", {
+        "p_account_id": str(account_uuid),
+        "p_suspended": payload.suspended,
+        "p_reason": payload.reason,
+    })
+    if result is not True:
+        raise HTTPException(502, "The account suspension could not be updated.")
+    return {"message": "Account suspended." if payload.suspended else "Account reinstated."}

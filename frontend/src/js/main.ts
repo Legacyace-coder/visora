@@ -7,6 +7,8 @@ interface SessionUser {
   display_name: string;
   referral_code?: string | null;
   agent_code?: string | null;
+  suspended_at?: string | null;
+  suspension_reason?: string | null;
 }
 
 interface ApiResult {
@@ -1055,7 +1057,7 @@ function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement 
 function setupPagedList<T>(
   id: string,
   endpoint: string,
-  key: "offers" | "publications" | "applications",
+  key: "offers" | "publications" | "applications" | "withdrawals",
   emptyMessage: string,
   render: (item: T) => HTMLElement
 ): () => Promise<void> {
@@ -1078,7 +1080,7 @@ function setupPagedList<T>(
     status.textContent = "Loading...";
     try {
       const response = await fetch(`${apiBaseUrl}${endpoint}?offset=${offset}`, { credentials: "include" });
-      const result = (await response.json()) as ApiResult & { offers?: T[]; publications?: T[]; applications?: T[]; has_more?: boolean };
+      const result = (await response.json()) as ApiResult & { offers?: T[]; publications?: T[]; applications?: T[]; withdrawals?: T[]; has_more?: boolean };
       if (currentRequest !== requestId) return;
       if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Could not load records.");
       const items = result[key];
@@ -1123,6 +1125,86 @@ async function loadWallet(): Promise<void> {
     status.textContent = error instanceof Error ? error.message : "Wallet could not be loaded.";
   }
 }
+
+interface Withdrawal {
+  id: string;
+  photographer_id?: string;
+  amount_cents: string;
+  currency: string;
+  method: string | null;
+  destination: string | null;
+  status: string;
+  fee_status: string;
+  withdrawal_fee_cents: string | null;
+  company_charge_cents: string | null;
+  fee_total_cents: string | null;
+  fee_receipt_reference: string | null;
+  payout_receipt_reference: string | null;
+  refund_receipt_reference: string | null;
+  reviewer_notes: string | null;
+  requested_at?: string;
+  paid_at?: string | null;
+  refunded_at?: string | null;
+}
+
+function createPhotographerWithdrawalCard(withdrawal: Withdrawal): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "submission-card";
+  const heading = document.createElement("h4");
+  heading.textContent = `${formatUsdCents(withdrawal.amount_cents)} USD · ${withdrawal.status}`;
+  const details = document.createElement("p");
+  details.textContent = `${withdrawal.method || "Method pending"} · Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`;
+  const notice = document.createElement("p");
+  notice.textContent = withdrawal.reviewer_notes ? `Review: ${withdrawal.reviewer_notes}` : "Wallet balances are not proof that a payout was sent.";
+  card.append(heading, details, notice);
+  return card;
+}
+
+const refreshPhotographerWithdrawals = setupPagedList<Withdrawal>(
+  "withdrawals", "/photographer/withdrawals", "withdrawals", "No withdrawal requests yet.",
+  createPhotographerWithdrawalCard,
+);
+
+const withdrawalForm = document.querySelector<HTMLFormElement>("#withdrawal-form");
+withdrawalForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const status = document.querySelector<HTMLElement>("#withdrawal-form-status");
+  const submit = withdrawalForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (!status || !submit) return;
+  const data = new FormData(withdrawalForm);
+  submit.disabled = true;
+  status.textContent = "Submitting...";
+  try {
+    const amount = String(data.get("amount_cents") || "");
+    if (!/^[1-9][0-9]*$/.test(amount) || BigInt(amount) < 1500000n) {
+      throw new Error("The minimum withdrawal is $15,000.");
+    }
+    const fee = (BigInt(amount) * 25n + 5000n) / 10000n * 100n;
+    const confirmFee = window.confirm(
+      `This request requires a separate ${formatUsdCents(fee.toString())} USD fee (15% withdrawal fee and 10% company charge). Submit the withdrawal request?`,
+    );
+    if (!confirmFee) return;
+    const response = await fetch(`${apiBaseUrl}/photographer/withdrawals`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount_cents: amount,
+        method: data.get("method"),
+        destination: data.get("destination"),
+      }),
+    });
+    const result = await response.json() as ApiResult;
+    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Withdrawal could not be requested.");
+    withdrawalForm.reset();
+    status.textContent = "Withdrawal request submitted.";
+    await Promise.all([loadWallet(), refreshPhotographerWithdrawals()]);
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Withdrawal could not be requested.";
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 function createOfferCard(offer: AcquisitionOffer, admin: boolean): HTMLElement {
   const card = document.createElement("article");
@@ -2208,7 +2290,13 @@ const loadAgentReferrals = setupWorkspaceReport<{ display_name: string }>(
     return item;
   },
 );
-const loadAdminAccounts = setupWorkspaceReport<{ id: string; display_name: string; role: string }>(
+const loadAdminAccounts = setupWorkspaceReport<{
+  id: string;
+  display_name: string;
+  role: string;
+  suspended_at?: string | null;
+  suspension_reason?: string | null;
+}>(
   "admin-accounts", "/admin/workspace-report", "accounts", "adminStat", "No photographer or agent accounts.",
   (account) => {
     const card = document.createElement("article");
@@ -2216,11 +2304,151 @@ const loadAdminAccounts = setupWorkspaceReport<{ id: string; display_name: strin
     const title = document.createElement("h3");
     title.textContent = account.display_name;
     const details = document.createElement("p");
-    details.textContent = `${account.role} · ${account.id}`;
-    card.append(title, details);
+    details.textContent = `${account.role} · ${account.id} · ${account.suspended_at ? "Suspended" : "Active"}`;
+    if (account.suspension_reason) {
+      const reason = document.createElement("p");
+      reason.textContent = `Reason: ${account.suspension_reason}`;
+      card.appendChild(reason);
+    }
+    const suspend = document.createElement("button");
+    suspend.type = "button";
+    suspend.className = "button button-dark small";
+    suspend.textContent = account.suspended_at ? "Reinstate account" : "Suspend account";
+    suspend.addEventListener("click", async () => {
+      let reason: string | null = null;
+      if (!account.suspended_at) {
+        reason = window.prompt("Reason for suspension (required)");
+        if (!reason?.trim()) return;
+      }
+      suspend.disabled = true;
+      try {
+        const response = await fetch(`${apiBaseUrl}/admin/accounts/${encodeURIComponent(account.id)}/suspension`, {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ suspended: !account.suspended_at, reason }),
+        });
+        const result = await response.json() as ApiResult;
+        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Suspension could not be updated.");
+        await loadAdminAccounts();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : "Suspension could not be updated.");
+      } finally {
+        suspend.disabled = false;
+      }
+    });
+    card.append(title, details, suspend);
     return card;
   },
 );
+
+function createAdminWithdrawalCard(withdrawal: Withdrawal): HTMLElement {
+  const card = document.createElement("article");
+  card.className = "submission-card";
+  const heading = document.createElement("h3");
+  heading.textContent = `${formatUsdCents(withdrawal.amount_cents)} USD · ${withdrawal.status}`;
+  const details = document.createElement("p");
+  details.textContent = `${withdrawal.photographer_id || "Photographer"} · ${withdrawal.method || ""} · Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`;
+  const destination = document.createElement("p");
+  destination.textContent = `Destination: ${withdrawal.destination || "Not provided"}`;
+  card.append(heading, details, destination);
+
+  if (withdrawal.status === "pending") {
+    const feeReceipt = document.createElement("input");
+    feeReceipt.placeholder = "Fee receipt or verification reference";
+    feeReceipt.maxLength = 1000;
+    const verifyFee = document.createElement("button");
+    verifyFee.type = "button";
+    verifyFee.className = "button button-dark small";
+    verifyFee.textContent = "Verify fee";
+    verifyFee.addEventListener("click", async () => {
+      if (!feeReceipt.value.trim()) return;
+      verifyFee.disabled = true;
+      await adminWithdrawalAction(
+        `/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/fee`,
+        { receipt_reference: feeReceipt.value.trim(), verified: true },
+      );
+      await refreshAdminWithdrawals();
+    });
+
+    const payoutReceipt = document.createElement("input");
+    payoutReceipt.placeholder = "Payout receipt reference";
+    payoutReceipt.maxLength = 1000;
+    const pay = document.createElement("button");
+    pay.type = "button";
+    pay.className = "button button-dark small";
+    pay.textContent = "Record payout";
+    pay.addEventListener("click", async () => {
+      if (!payoutReceipt.value.trim()) return;
+      pay.disabled = true;
+      await adminWithdrawalAction(
+        `/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/pay`,
+        { payout_receipt_reference: payoutReceipt.value.trim() },
+      );
+      await refreshAdminWithdrawals();
+    });
+
+    const rejectReason = document.createElement("input");
+    rejectReason.placeholder = "Rejection reason";
+    rejectReason.maxLength = 2000;
+    const refundReceipt = document.createElement("input");
+    refundReceipt.placeholder = "Refund receipt (required if fee was paid)";
+    refundReceipt.maxLength = 1000;
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "button button-dark small";
+    reject.textContent = "Reject";
+    reject.addEventListener("click", async () => {
+      if (!rejectReason.value.trim()) return;
+      reject.disabled = true;
+      await adminWithdrawalAction(
+        `/admin/withdrawals/${encodeURIComponent(withdrawal.id)}/reject`,
+        { reason: rejectReason.value.trim(), refund_receipt_reference: refundReceipt.value.trim() || null },
+      );
+      await refreshAdminWithdrawals();
+    });
+    card.append(feeReceipt, verifyFee, payoutReceipt, pay, rejectReason, refundReceipt, reject);
+  }
+  return card;
+}
+
+async function adminWithdrawalAction(path: string, body: unknown): Promise<void> {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json() as ApiResult;
+  if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Withdrawal action could not be saved.");
+}
+
+const refreshAdminWithdrawals = setupPagedList<Withdrawal>(
+  "admin-withdrawals", "/admin/withdrawals", "withdrawals", "No withdrawal requests.",
+  createAdminWithdrawalCard,
+);
+
+const feeRecipientForm = document.querySelector<HTMLFormElement>("#fee-recipient-form");
+feeRecipientForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const status = document.querySelector<HTMLElement>("#fee-recipient-status");
+  const input = document.querySelector<HTMLInputElement>("#withdrawal-fee-recipient");
+  if (!status || !input) return;
+  status.textContent = "Saving...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/admin/withdrawal-fee-recipient`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient: input.value.trim() }),
+    });
+    const result = await response.json() as ApiResult;
+    if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Fee recipient could not be saved.");
+    status.textContent = result.message || "Fee recipient saved.";
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Fee recipient could not be saved.";
+  }
+});
 
 // Protected dashboard pages
 const dashboard = document.querySelector<HTMLElement>(
@@ -2284,6 +2512,7 @@ if (dashboard) {
         refreshPhotographerOffers(),
         refreshPhotographerPublications(),
         refreshPhotographerPartnerships(),
+        refreshPhotographerWithdrawals(),
       ]);
     }
     if (requiredRole === "admin") {
@@ -2292,6 +2521,19 @@ if (dashboard) {
       void refreshAdminOffers();
       void refreshAdminPublications();
       void refreshAdminPartnerships();
+      void refreshAdminWithdrawals();
+      void (async () => {
+        try {
+          const response = await fetch(`${apiBaseUrl}/withdrawal-settings`, { credentials: "include" });
+          const result = await response.json() as ApiResult & { fee_recipient?: string | null };
+          if (response.ok) {
+            const input = document.querySelector<HTMLInputElement>("#withdrawal-fee-recipient");
+            if (input) input.value = result.fee_recipient || "";
+          }
+        } catch {
+          // The fee recipient can be set from the form if loading it fails.
+        }
+      })();
     }
     if (requiredRole === "agent") void loadAgentReferrals();
   })();
