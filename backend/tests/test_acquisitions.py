@@ -96,6 +96,20 @@ def test_changed_acquisition_quote_returns_conflict():
     assert "new quote" in error.value.detail
 
 
+def test_offer_acceptance_reports_non_partner_limit():
+    class LimitError(Exception):
+        code = "P1003"
+
+    class Client:
+        def rpc(self, name, params):
+            raise LimitError()
+
+    with pytest.raises(HTTPException) as error:
+        acquisitions.execute_rpc(Client(), "respond_to_acquisition_offer", {})
+    assert error.value.status_code == 409
+    assert "remaining non-partner allowance" in error.value.detail
+
+
 def test_offer_response_uses_authoritative_transaction(monkeypatch):
     calls = []
 

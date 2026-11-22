@@ -91,6 +91,9 @@ Agent reports include referred display names and aggregate submission activity.
 Apply the weekly-target migration to enable partner progress on photographer
 dashboards. The target is 200 unique first-time approved photos per UTC week
 after partnership approval; submission approval counts every included photo.
+The non-partner acquisition-limit migration caps non-partners at 160 acquired
+photos and checks both submissions and offer acceptance. Apply it alongside the
+updated backend and frontend. Pending work does not reserve allowance.
 Profile photos are private, stored in the database, and limited to 2 MB. Email
 and password changes require the current password; configure and verify the
 Supabase email-confirmation settings before deployment.

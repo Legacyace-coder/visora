@@ -83,6 +83,29 @@ class WeeklyTarget(BaseModel):
     week_end: AwareDatetime
 
 
+class AcquisitionLimit(BaseModel):
+    is_partner: bool = Field(strict=True)
+    limit: int = Field(strict=True, gt=0)
+    acquired_count: int = Field(strict=True, ge=0)
+    remaining: int = Field(strict=True, ge=0)
+
+
+@router.get("/photographer/acquisition-limit")
+def photographer_acquisition_limit(
+    request: Request,
+    current_user: dict = Depends(require_roles("photographer")),
+):
+    result = workspace_rpc(request, "photographer_acquisition_limit", {})
+    try:
+        progress = AcquisitionLimit.model_validate(result)
+        if progress.remaining != max(progress.limit - progress.acquired_count, 0):
+            raise ValueError("Invalid acquisition limit progress")
+    except (ValidationError, ValueError) as error:
+        logger.error("Acquisition limit returned an invalid response: %s", error)
+        raise HTTPException(502, "Acquisition limit could not be loaded.") from error
+    return progress
+
+
 @router.get("/photographer/weekly-target")
 def photographer_weekly_target(
     request: Request,

@@ -664,12 +664,17 @@ def create_submission(
                 "p_photo_ids": photo_ids,
             },
         ).execute()
-    except Exception:
+    except Exception as error:
         logging.exception("Photographer submission transaction failed")
+        if getattr(error, "code", None) == "P1003":
+            raise HTTPException(
+                status_code=409,
+                detail="This submission exceeds your remaining non-partner allowance of 160 acquired photos. Select fewer photos or become a partner.",
+            ) from error
         raise HTTPException(
             status_code=502,
             detail="The submission could not be saved. Please try again.",
-        )
+        ) from error
 
     if not result.data:
         raise HTTPException(

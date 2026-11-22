@@ -143,6 +143,25 @@ def test_submission_uses_the_transactional_rpc(monkeypatch):
     assert result["photo_count"] == 1
 
 
+def test_submission_reports_non_partner_limit(monkeypatch):
+    class LimitError(Exception):
+        code = "P1003"
+
+    class Client(FakeSubmissionClient):
+        def rpc(self, name, params):
+            raise LimitError()
+
+    monkeypatch.setattr(photographer, "get_user_client", lambda request: Client())
+    payload = SubmissionCreate(
+        submission_type="individual", title="Selection",
+        photo_ids=["00000000-0000-0000-0000-000000000001"],
+    )
+    with pytest.raises(HTTPException) as error:
+        photographer.create_submission(payload, None, {"id": "photographer-id"})
+    assert error.value.status_code == 409
+    assert "remaining non-partner allowance" in error.value.detail
+
+
 def test_photo_metadata_normalizes_fields_and_serializes_capture_date():
     metadata = PhotoMetadata.model_validate({
         "title": "  Dusk  ",

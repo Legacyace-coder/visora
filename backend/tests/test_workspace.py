@@ -86,6 +86,43 @@ def test_weekly_target_for_non_partner(client, monkeypatch):
     assert client.get("/photographer/weekly-target").json() == {"is_partner": False}
 
 
+@pytest.mark.parametrize("role", ["agent", "admin"])
+def test_acquisition_limit_requires_photographer(client, monkeypatch, role):
+    set_role(monkeypatch, role)
+    assert client.get("/photographer/acquisition-limit").status_code == 403
+
+
+@pytest.mark.parametrize("result", [
+    {"is_partner": False, "limit": 160, "acquired_count": 159, "remaining": 1},
+    {"is_partner": False, "limit": 160, "acquired_count": 165, "remaining": 0},
+    {"is_partner": True, "limit": 160, "acquired_count": 200, "remaining": 0},
+])
+def test_acquisition_limit_returns_progress(client, monkeypatch, result):
+    set_role(monkeypatch, "photographer")
+    calls = []
+
+    def rpc(request, name, params):
+        calls.append((name, params))
+        return result
+
+    monkeypatch.setattr(workspace, "workspace_rpc", rpc)
+    response = client.get("/photographer/acquisition-limit")
+    assert response.status_code == 200
+    assert response.json() == result
+    assert calls == [("photographer_acquisition_limit", {})]
+
+
+@pytest.mark.parametrize("result", [
+    None,
+    {"is_partner": False, "limit": 160, "acquired_count": 159, "remaining": 2},
+    {"is_partner": "false", "limit": 160, "acquired_count": 0, "remaining": 160},
+])
+def test_acquisition_limit_rejects_invalid_progress(client, monkeypatch, result):
+    set_role(monkeypatch, "photographer")
+    monkeypatch.setattr(workspace, "workspace_rpc", lambda *args: result)
+    assert client.get("/photographer/acquisition-limit").status_code == 502
+
+
 @pytest.mark.parametrize("result", [
     None,
     {"is_partner": True, "target": 200, "approved_count": -1},

@@ -97,6 +97,8 @@ def execute_rpc(client, name: str, params: dict):
             raise HTTPException(status_code=409, detail="An original photograph is unavailable; the action was not completed.") from error
         if code == "P1002":
             raise HTTPException(status_code=409, detail="The offer amount changed. Request a new quote.") from error
+        if code == "P1003":
+            raise HTTPException(status_code=409, detail="This offer exceeds your remaining non-partner allowance of 160 acquired photos. Become a partner to accept it.") from error
         if code in {"22023", "23514", "23502"}:
             raise HTTPException(status_code=422, detail="The request does not meet the agreement requirements.") from error
         if code == "42501":

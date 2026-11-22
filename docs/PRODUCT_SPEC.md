@@ -33,6 +33,11 @@ No separate finance, reviewer or moderator roles.
   partnership approval, and $100 per photograph otherwise. Mixed selections
   use the applicable rate for each photograph. Existing offers retain their
   original amounts; approval alone does not create an offer or a wallet credit.
+- Non-partners have a lifetime limit of 160 acquired photos. Each submission
+  must fit the remaining allowance, and accepting any offer (including one sent
+  before the limit was introduced) must not exceed it. Pending submissions and
+  offers do not reserve places. Approved partners are not subject to this limit.
+  The dashboard displays acquired photos and the remaining allowance.
 - Published work
 - Membership plans and subscriptions
 - Acquisition offers and contracts

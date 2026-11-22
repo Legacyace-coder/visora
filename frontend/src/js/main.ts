@@ -1468,9 +1468,10 @@ function createOfferCard(offer: AcquisitionOffer, admin: boolean): HTMLElement {
         });
         const result = (await response.json()) as ApiResult;
         if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Response could not be saved.");
-        await Promise.all([refreshPhotographerOffers(), loadWallet()]);
+        await Promise.all([refreshPhotographerOffers(), loadWallet(), loadAcquisitionLimit()]);
       } catch (error) {
         status.textContent = error instanceof Error ? error.message : "Response could not be saved.";
+        if (accepted) void loadAcquisitionLimit();
       } finally {
         accept.disabled = isExpired(offer.expires_on);
         decline.disabled = false;
@@ -1840,6 +1841,47 @@ partnershipForm?.addEventListener("submit", async (event) => {
 let photographerOverviewRequest = 0;
 let weeklyTargetRequest = 0;
 let weeklyTargetTimer: number | undefined;
+let acquisitionLimitRequest = 0;
+
+async function loadAcquisitionLimit(): Promise<void> {
+  const section = document.querySelector<HTMLElement>("#acquisition-limit");
+  const status = document.querySelector<HTMLElement>("#acquisition-limit-status");
+  const count = document.querySelector<HTMLElement>("#acquisition-limit-count");
+  const progress = document.querySelector<HTMLProgressElement>("#acquisition-limit-progress");
+  const remaining = document.querySelector<HTMLElement>("#acquisition-limit-remaining");
+  if (!section || !status || !count || !progress || !remaining) return;
+  const requestId = ++acquisitionLimitRequest;
+  section.hidden = true;
+  status.textContent = "Loading photo allowance...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/photographer/acquisition-limit`, { credentials: "include" });
+    const result = await response.json() as {
+      is_partner?: boolean; limit?: number; acquired_count?: number; remaining?: number; detail?: string;
+    };
+    if (requestId !== acquisitionLimitRequest) return;
+    if (!response.ok) throw new Error(result.detail || "Photo allowance could not be loaded.");
+    const { is_partner: isPartner, limit, acquired_count: acquired, remaining: left } = result;
+    if (typeof isPartner !== "boolean" || typeof limit !== "number" || !Number.isSafeInteger(limit) || limit <= 0 ||
+        typeof acquired !== "number" || !Number.isSafeInteger(acquired) || acquired < 0 ||
+        typeof left !== "number" || !Number.isSafeInteger(left) || left !== Math.max(limit - acquired, 0)) {
+      throw new Error("Photo allowance could not be loaded.");
+    }
+    if (!isPartner) {
+      count.textContent = `${acquired} / ${limit}`;
+      progress.max = limit;
+      progress.value = Math.min(acquired, limit);
+      progress.setAttribute("aria-valuetext", `${acquired} of ${limit} photos acquired`);
+      remaining.textContent = left
+        ? `${left} photo${left === 1 ? "" : "s"} remaining in your allowance.`
+        : "You have reached the limit. Become an approved partner to submit more photos or accept further offers.";
+      section.hidden = false;
+    }
+    status.textContent = "";
+  } catch (error) {
+    if (requestId !== acquisitionLimitRequest) return;
+    status.textContent = error instanceof Error ? error.message : "Photo allowance could not be loaded.";
+  }
+}
 
 async function loadWeeklyTarget(): Promise<void> {
   const section = document.querySelector<HTMLElement>("#weekly-target");
@@ -1926,10 +1968,14 @@ document.querySelector<HTMLButtonElement>("#overview-refresh")
   ?.addEventListener("click", () => {
     void loadPhotographerOverview();
     void loadWeeklyTarget();
+    void loadAcquisitionLimit();
   });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && document.querySelector("#weekly-target")) void loadWeeklyTarget();
+  if (!document.hidden && document.querySelector("#weekly-target")) {
+    void loadWeeklyTarget();
+    void loadAcquisitionLimit();
+  }
 });
 
 let photographerPortfolioRequest = 0;
@@ -2329,6 +2375,7 @@ individualSubmissionForm?.addEventListener("submit", async (event) => {
     const result = (await response.json()) as ApiResult;
 
     if (!response.ok) {
+      if (response.status === 409) void loadAcquisitionLimit();
       throw new Error(result.detail || "The submission could not be created.");
     }
 
@@ -2379,6 +2426,7 @@ collectionSubmissionForm?.addEventListener("submit", async (event) => {
     const result = (await response.json()) as ApiResult;
 
     if (!response.ok) {
+      if (response.status === 409) void loadAcquisitionLimit();
       throw new Error(result.detail || "The collection could not be submitted.");
     }
 
@@ -2936,6 +2984,7 @@ if (dashboard) {
       void Promise.all([
         loadPhotographerOverview(),
         loadWeeklyTarget(),
+        loadAcquisitionLimit(),
         loadPhotographerCollections(),
         loadPhotographerPortfolio(),
         loadPhotographerSubmissions(),

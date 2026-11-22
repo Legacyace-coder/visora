@@ -72,6 +72,18 @@
         <p>Only first-time approvals after partnership approval count. Pending or rejected photos do not count.</p>
       </section>
       <p id="weekly-target-status" role="status" aria-live="polite"></p>
+      <section id="acquisition-limit" class="weekly-target" aria-labelledby="acquisition-limit-heading" hidden>
+        <div class="weekly-target-heading">
+          <div><p class="weekly-target-eyebrow">NON-PARTNER PROGRESS</p><h2 id="acquisition-limit-heading">Your photo allowance</h2></div>
+          <strong id="acquisition-limit-count"></strong>
+        </div>
+        <label for="acquisition-limit-progress">Photos acquired through accepted offers</label>
+        <progress id="acquisition-limit-progress"></progress>
+        <p id="acquisition-limit-remaining"></p>
+        <p>Pending submissions and offers do not reserve places. Become an approved partner to submit or accept offers beyond this limit.</p>
+        <p><a href="#partnership-heading">Apply for partnership</a></p>
+      </section>
+      <p id="acquisition-limit-status" role="status" aria-live="polite"></p>
       <button id="overview-refresh" class="button button-dark small" type="button">Refresh statistics</button>
       <p id="overview-status" role="status" aria-live="polite"></p>
     </section>
@@ -208,6 +220,7 @@
 
       <section class="workspace-panel" aria-labelledby="submission-heading" data-dashboard-view>
         <h3 id="submission-heading">Submit work for review</h3>
+        <p class="workspace-hint">Non-partners can have up to 160 photos acquired. Each submission must fit within the remaining allowance; pending work does not reserve places.</p>
         <form id="individual-submission-form" class="workspace-form">
           <label for="individual-submission-title">Submission title</label>
           <input id="individual-submission-title" name="title" maxlength="180" required>
