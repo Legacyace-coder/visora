@@ -56,9 +56,44 @@ def test_admin_offer_and_publication_endpoints_require_admin(monkeypatch, role):
     with TestClient(app) as client:
         client.cookies.set(auth.ACCESS_COOKIE, "test-token")
         assert client.post("/admin/acquisition-offers", json=offer_data()).status_code == 403
+        assert client.post("/admin/acquisition-offers/quote", json={
+            "submission_id": SUBMISSION_ID, "photo_ids": [PHOTO_ID],
+        }).status_code == 403
         assert client.post(
             "/admin/publications", json={"offer_id": SUBMISSION_ID, "photo_id": PHOTO_ID}
         ).status_code == 403
+
+
+@pytest.mark.parametrize("quote,expected", [
+    ({"amount_cents": "12000", "partner_count": 1, "non_partner_count": 0}, 200),
+    ({"amount_cents": "10000", "partner_count": 0, "non_partner_count": 1}, 200),
+    ({"amount_cents": "10000", "partner_count": 1, "non_partner_count": 0}, 502),
+])
+def test_admin_offer_quote_validates_database_result(monkeypatch, quote, expected):
+    monkeypatch.setattr(security.auth, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(security.auth, "get_profile_for_token", lambda client, token: {"id": "admin", "role": "admin"})
+    monkeypatch.setattr(acquisitions, "get_admin_client", lambda request, user: object())
+    monkeypatch.setattr(acquisitions, "execute_rpc", lambda client, name, params: quote)
+    with TestClient(app) as client:
+        client.cookies.set(auth.ACCESS_COOKIE, "test-token")
+        response = client.post("/admin/acquisition-offers/quote", json={
+            "submission_id": SUBMISSION_ID, "photo_ids": [PHOTO_ID],
+        })
+    assert response.status_code == expected
+
+
+def test_changed_acquisition_quote_returns_conflict():
+    class ChangedQuote(Exception):
+        code = "P1002"
+
+    class Client:
+        def rpc(self, name, params):
+            raise ChangedQuote()
+
+    with pytest.raises(HTTPException) as error:
+        acquisitions.execute_rpc(Client(), "create_acquisition_offer", {})
+    assert error.value.status_code == 409
+    assert "new quote" in error.value.detail
 
 
 def test_offer_response_uses_authoritative_transaction(monkeypatch):

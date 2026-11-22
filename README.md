@@ -75,6 +75,10 @@ permitted columns explicitly rather than using `select *` on submissions.
 The acquisition migration requires the existing `wallet_accounts` table. Offer
 acceptance records one acquisition credit and adds it to the available wallet
 balance in the same transaction. This is not a full ledger or proof of payout.
+New offers use fixed rates of $120 per photograph first approved after
+partnership approval (including at the same time) and $100 otherwise. Existing
+offers keep their agreed amounts. Apply the fixed-rate migration together with
+the updated backend and frontend.
 Gallery publication requires an accepted offer with explicit permission; public
 visitors can view and download the original. The backend needs the Supabase
 secret key to retrieve authorized originals without making the storage bucket

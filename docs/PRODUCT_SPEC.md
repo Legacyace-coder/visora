@@ -29,6 +29,10 @@ No separate finance, reviewer or moderator roles.
 - Rejections require feedback; accepted and rejected decisions are final.
 - Accepted acquisition offers credit the agreed USD amount to the available
   wallet once; a wallet credit is not proof of withdrawal or payout.
+- New acquisition offers pay $120 per photograph first approved at or after
+  partnership approval, and $100 per photograph otherwise. Mixed selections
+  use the applicable rate for each photograph. Existing offers retain their
+  original amounts; approval alone does not create an offer or a wallet credit.
 - Published work
 - Membership plans and subscriptions
 - Acquisition offers and contracts

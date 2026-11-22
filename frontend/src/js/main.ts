@@ -86,7 +86,7 @@ document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carouse
 
 // Scroll-reveal animation for the home page story sections and similar blocks.
 const revealTargets = document.querySelectorAll<HTMLElement>(
-  ".photo-stories-heading, .photo-stories-grid figure, .about-story, .feature-list article, .simple-callout, .intro, .gallery article, .collection-card"
+  ".photo-stories-heading, .photo-stories-grid figure, .how-it-works-heading, .how-it-works-steps li, .how-it-works-rates, .about-story, .feature-list article, .simple-callout, .intro, .gallery article, .collection-card"
 );
 if (revealTargets.length && "IntersectionObserver" in window &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1054,8 +1054,7 @@ function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement 
   form.innerHTML = `
     <p>Select the photographs covered by this offer (up to 100).</p>
     <div class="offer-photo-selection"></div>
-    <label>Compensation in USD cents <input name="amount_cents" inputmode="numeric" pattern="[1-9][0-9]{0,18}" required></label>
-    <p>For example, 12550 means $125.50. Acceptance immediately credits the photographer's available wallet.</p>
+    <p>The offer amount is calculated at $120 per partner photo and $100 per non-partner photo, based on partnership status at each photo's first approval. Acceptance credits the photographer's available wallet.</p>
     <label>Rights <select name="rights_type" required><option value="">Choose rights</option><option value="license">License</option><option value="assignment">Assignment</option></select></label>
     <label class="offer-checkbox"><input type="checkbox" name="exclusive"> Exclusive</label>
     <label>Territory <input name="territory" maxlength="500" required></label>
@@ -1092,19 +1091,38 @@ function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement 
     if (!status || !submit) return;
     const data = new FormData(form);
     const photoIds = data.getAll("photo_ids").map(String);
-    const amount = String(data.get("amount_cents") || "");
     if (photoIds.length < 1 || photoIds.length > 100) {
       status.textContent = "Select between 1 and 100 photographs.";
       return;
     }
-    if (!/^[1-9][0-9]{0,18}$/.test(amount) || BigInt(amount) > 9223372036854775807n) {
-      status.textContent = "Enter a positive amount in cents within the supported range.";
-      return;
-    }
-    if (!window.confirm("Send this binding offer? Its terms cannot be edited after sending.")) return;
     submit.disabled = true;
-    status.textContent = "Sending offer...";
+    status.textContent = "Calculating offer...";
+    let sending = false;
     try {
+      const quoteResponse = await fetch(`${apiBaseUrl}/admin/acquisition-offers/quote`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submission_id: detail.submission.id, photo_ids: photoIds }),
+      });
+      const quote = (await quoteResponse.json()) as ApiResult & {
+        amount_cents?: string; partner_count?: number; non_partner_count?: number;
+      };
+      if (!quoteResponse.ok) throw new Error(typeof quote.detail === "string" ? quote.detail : "Offer amount could not be calculated.");
+      if (typeof quote.amount_cents !== "string" || !/^[1-9][0-9]{0,6}$/.test(quote.amount_cents) ||
+          !Number.isInteger(quote.partner_count) || !Number.isInteger(quote.non_partner_count) ||
+          typeof quote.partner_count !== "number" || typeof quote.non_partner_count !== "number" ||
+          quote.partner_count < 0 || quote.non_partner_count < 0 ||
+          quote.partner_count + quote.non_partner_count !== photoIds.length ||
+          Number(quote.amount_cents) !== quote.partner_count * 12000 + quote.non_partner_count * 10000) {
+        throw new Error("The server returned an invalid offer amount.");
+      }
+      if (!window.confirm(`Send this binding offer for ${formatUsdCents(quote.amount_cents)} USD? ${quote.partner_count} partner-rate and ${quote.non_partner_count} non-partner-rate photographs. Terms cannot be edited after sending.`)) {
+        status.textContent = "Offer cancelled.";
+        return;
+      }
+      sending = true;
+      status.textContent = "Sending offer...";
       const response = await fetch(`${apiBaseUrl}/admin/acquisition-offers`, {
         method: "POST",
         credentials: "include",
@@ -1112,7 +1130,7 @@ function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement 
         body: JSON.stringify({
           submission_id: detail.submission.id,
           photo_ids: photoIds,
-          amount_cents: amount,
+          amount_cents: quote.amount_cents,
           rights_type: String(data.get("rights_type") || ""),
           exclusive: data.has("exclusive"),
           territory: String(data.get("territory") || "").trim(),
@@ -1123,13 +1141,21 @@ function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement 
           gallery_permission: data.has("gallery_permission"),
         }),
       });
-      const result = (await response.json()) as ApiResult;
+      if (response.status === 408 || response.status >= 500) {
+        throw new Error("The offer could not be confirmed. Refresh offers before trying again.");
+      }
+      const result = (await response.json()) as ApiResult & { id?: unknown };
       if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Offer could not be sent. Check all fields.");
+      if (!result || typeof result.id !== "string" || !result.id) {
+        throw new Error("The offer could not be confirmed. Refresh offers before trying again.");
+      }
       form.reset();
       status.textContent = "Offer sent.";
       await refreshAdminOffers();
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : "Offer could not be sent.";
+      status.textContent = sending && (error instanceof TypeError || error instanceof SyntaxError)
+        ? "The offer could not be confirmed. Refresh offers before trying again."
+        : error instanceof Error ? error.message : "Offer could not be sent.";
     } finally {
       submit.disabled = false;
     }

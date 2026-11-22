@@ -7,7 +7,7 @@ from uuid import UUID
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from app.api import auth
 from app.api.admin import get_admin_client
@@ -23,9 +23,19 @@ PUBLICATION_COLUMNS = (
 )
 
 
-class OfferCreate(BaseModel):
+class OfferSelection(BaseModel):
     submission_id: UUID
     photo_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+    @field_validator("photo_ids")
+    @classmethod
+    def validate_photo_ids(cls, values: list[UUID]) -> list[UUID]:
+        if len(set(values)) != len(values):
+            raise ValueError("Photographs must be unique.")
+        return values
+
+
+class OfferCreate(OfferSelection):
     amount_cents: str = Field(pattern=r"^[1-9][0-9]{0,18}$")
     rights_type: Literal["license", "assignment"]
     exclusive: bool
@@ -48,12 +58,10 @@ class OfferCreate(BaseModel):
             raise ValueError("Amount exceeds the supported wallet range.")
         return value
 
-    @field_validator("photo_ids")
-    @classmethod
-    def validate_photo_ids(cls, values: list[UUID]) -> list[UUID]:
-        if len(set(values)) != len(values):
-            raise ValueError("Photographs must be unique.")
-        return values
+class OfferQuote(BaseModel):
+    amount_cents: str = Field(pattern=r"^[1-9][0-9]{0,6}$")
+    partner_count: int = Field(strict=True, ge=0, le=100)
+    non_partner_count: int = Field(strict=True, ge=0, le=100)
 
 
 class OfferResponse(BaseModel):
@@ -87,6 +95,8 @@ def execute_rpc(client, name: str, params: dict):
             raise HTTPException(status_code=404, detail="The requested record was not found.") from error
         if code == "P1001":
             raise HTTPException(status_code=409, detail="An original photograph is unavailable; the action was not completed.") from error
+        if code == "P1002":
+            raise HTTPException(status_code=409, detail="The offer amount changed. Request a new quote.") from error
         if code in {"22023", "23514", "23502"}:
             raise HTTPException(status_code=422, detail="The request does not meet the agreement requirements.") from error
         if code == "42501":
@@ -143,6 +153,27 @@ def create_offer(
     if not offer_id:
         raise HTTPException(status_code=502, detail="The offer could not be created.")
     return {"id": offer_id}
+
+
+@router.post("/admin/acquisition-offers/quote")
+def quote_offer(
+    payload: OfferSelection,
+    request: Request,
+    current_user: dict = Depends(require_roles("admin")),
+):
+    result = execute_rpc(get_admin_client(request, current_user), "acquisition_offer_quote", {
+        "p_submission_id": str(payload.submission_id),
+        "p_photo_ids": [str(photo_id) for photo_id in payload.photo_ids],
+    })
+    try:
+        quote = OfferQuote.model_validate(result)
+        if (quote.partner_count + quote.non_partner_count != len(payload.photo_ids)
+                or int(quote.amount_cents) != quote.partner_count * 12000 + quote.non_partner_count * 10000):
+            raise ValueError("Invalid acquisition offer quote")
+    except (ValidationError, ValueError) as error:
+        logging.error("Acquisition offer quote returned an invalid response: %s", error)
+        raise HTTPException(status_code=502, detail="The offer amount could not be calculated.") from error
+    return quote
 
 
 @router.post("/admin/acquisition-offers/{offer_id}/cancel")

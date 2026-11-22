@@ -1381,6 +1381,65 @@ html {
   letter-spacing: .13em;
 }
 
+.how-it-works {
+  padding: 90px 8%;
+  background: #e5e3da;
+}
+
+.how-it-works-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 30px;
+  margin-bottom: 36px;
+}
+
+.how-it-works-heading h2 {
+  margin: 0;
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 500;
+  letter-spacing: -.06em;
+}
+
+.how-it-works-heading h2 em { font-family: Georgia, serif; font-weight: 400; }
+.how-it-works-heading > p { max-width: 290px; }
+.how-it-works-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+  padding: 0;
+  list-style: none;
+}
+.how-it-works-steps li { border-top: 1px solid #aaa99f; padding: 20px 0; }
+.how-it-works-steps span { color: #68675f; font-size: 11px; letter-spacing: .12em; }
+.how-it-works-steps h3 { margin: 24px 0 10px; font-size: 20px; font-weight: 500; letter-spacing: -.04em; }
+.how-it-works :is(.how-it-works-heading > p, li p, .how-it-works-rates p) { color: #56564f; font-size: 13px; line-height: 1.8; }
+.how-it-works-rates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 35px;
+  margin: 20px 0 30px;
+}
+.how-it-works-rates p { margin: 0; }
+.how-it-works-rates strong { color: #191916; font-size: 24px; font-weight: 500; }
+.how-it-works-rates p:last-child { flex-basis: 100%; max-width: 750px; }
+[data-theme="dark"] .how-it-works { background: #202832; }
+[data-theme="dark"] .how-it-works :is(.how-it-works-heading > p, li p, li span, .how-it-works-rates p) { color: #c1c8cc; }
+[data-theme="dark"] .how-it-works-rates strong { color: #f0eee7; }
+[data-theme="dark"] .how-it-works-steps li { border-color: #66717a; }
+
+@media (max-width: 760px) {
+  .how-it-works { padding: 65px 7%; }
+  .how-it-works-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .how-it-works-heading { align-items: start; flex-direction: column; gap: 8px; }
+  .how-it-works-steps { grid-template-columns: 1fr; gap: 0; }
+  .how-it-works-steps h3 { margin-top: 12px; }
+  .how-it-works-rates { flex-direction: column; }
+}
+
 .auth-visual {
   margin: 28px 0 0;
   background: #d7d5cc;
