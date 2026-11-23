@@ -86,7 +86,7 @@ document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carouse
 
 // Scroll-reveal animation for the home page story sections and similar blocks.
 const revealTargets = document.querySelectorAll<HTMLElement>(
-  ".photo-stories-heading, .photo-stories-grid figure, .how-it-works-heading, .how-it-works-steps li, .how-it-works-rates, .about-story, .feature-list article, .simple-callout, .intro, .gallery article, .collection-card"
+  ".photo-stories-heading, .photo-stories-grid figure, .how-it-works-heading, .how-it-works-steps li, .how-it-works-rates, .agent-notice, .about-story, .feature-list article, .simple-callout, .intro, .gallery article, .collection-card"
 );
 if (revealTargets.length && "IntersectionObserver" in window &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1214,27 +1214,43 @@ function setupPagedList<T>(
   return () => load(false);
 }
 
+let walletRequest = 0;
+
 async function loadWallet(): Promise<void> {
   const status = document.getElementById("wallet-status");
-  if (!status) return;
+  const available = document.getElementById("wallet-available");
+  const pending = document.getElementById("wallet-pending");
+  if (!status || !available || !pending) return;
+  const requestId = ++walletRequest;
+  available.textContent = "—";
+  pending.textContent = "—";
   status.textContent = "Loading wallet...";
   try {
     const response = await fetch(`${apiBaseUrl}/photographer/wallet`, { credentials: "include" });
     const result = (await response.json()) as ApiResult & {
       wallet?: { currency: string; available_balance_cents: string; pending_balance_cents: string } | null;
     };
+    if (requestId !== walletRequest) return;
     if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Wallet could not be loaded.");
     if (result.wallet === null) {
-      status.textContent = "No wallet account yet.";
-    } else if (result.wallet) {
-      status.textContent = `Available: ${formatUsdCents(result.wallet.available_balance_cents)} USD · Pending: ${formatUsdCents(result.wallet.pending_balance_cents)} USD`;
+      status.textContent = "No wallet account yet. Your balance will appear here when an account is created.";
+    } else if (result.wallet && result.wallet.currency === "USD" &&
+        typeof result.wallet.available_balance_cents === "string" && /^\d+$/.test(result.wallet.available_balance_cents) &&
+        typeof result.wallet.pending_balance_cents === "string" && /^\d+$/.test(result.wallet.pending_balance_cents)) {
+      available.textContent = formatUsdCents(result.wallet.available_balance_cents);
+      pending.textContent = formatUsdCents(result.wallet.pending_balance_cents);
+      status.textContent = "";
     } else {
       throw new Error("The server returned an invalid wallet response.");
     }
   } catch (error) {
+    if (requestId !== walletRequest) return;
     status.textContent = error instanceof Error ? error.message : "Wallet could not be loaded.";
   }
 }
+
+document.querySelector<HTMLButtonElement>("#wallet-refresh")
+  ?.addEventListener("click", () => void loadWallet());
 
 interface Withdrawal {
   id: string;
@@ -1260,15 +1276,37 @@ interface Withdrawal {
 
 function createPhotographerWithdrawalCard(withdrawal: Withdrawal): HTMLElement {
   const card = document.createElement("article");
-  card.className = "submission-card";
+  card.className = "submission-card wallet-activity-card";
+  const top = document.createElement("div");
+  top.className = "wallet-activity-top";
   const heading = document.createElement("h4");
-  heading.textContent = `${formatUsdCents(withdrawal.amount_cents)} USD · ${withdrawal.status}`;
+  heading.textContent = `${formatUsdCents(withdrawal.amount_cents)} USD`;
+  const state = document.createElement("span");
+  state.className = "wallet-activity-badge";
+  state.textContent = withdrawal.status.replace(/_/g, " ");
+  top.append(heading, state);
   const details = document.createElement("p");
-  details.textContent = `${withdrawal.method || "Method pending"} · ${withdrawal.fee_total_cents === "0" ? "No fee required" : `Fee ${formatUsdCents(withdrawal.fee_total_cents || "0")} USD · ${withdrawal.fee_status}`}`;
+  const feeCents = withdrawal.fee_total_cents;
+  const fee = typeof feeCents !== "string" || !/^\d+$/.test(feeCents)
+    ? "Fee unavailable"
+    : feeCents === "0"
+      ? "No fee required"
+      : `Fee ${formatUsdCents(feeCents)} USD · ${typeof withdrawal.fee_status === "string" ? withdrawal.fee_status.replace(/_/g, " ") : "status unavailable"}`;
+  details.textContent = `${withdrawal.method ? withdrawal.method.replace(/_/g, " ") : "Method pending"} · ${fee}`;
+  card.append(top);
+  if (withdrawal.requested_at) {
+    const date = new Date(withdrawal.requested_at);
+    if (Number.isFinite(date.getTime())) {
+      const timestamp = document.createElement("p");
+      timestamp.className = "wallet-activity-date";
+      timestamp.textContent = `Requested ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date)}`;
+      card.append(timestamp);
+    }
+  }
   const notice = document.createElement("p");
   notice.textContent = withdrawal.reviewer_notes ? `Review: ${withdrawal.reviewer_notes}` : "Wallet balances are not proof that a payout was sent.";
-  card.append(heading, details, notice);
-  if (withdrawal.fee_total_cents !== "0") {
+  card.append(details, notice);
+  if (typeof feeCents === "string" && /^\d+$/.test(feeCents) && feeCents !== "0") {
     const recipient = document.createElement("p");
     recipient.textContent = `Fee recipient: ${withdrawal.fee_recipient || "Not configured; contact Visora before paying."}`;
     card.appendChild(recipient);

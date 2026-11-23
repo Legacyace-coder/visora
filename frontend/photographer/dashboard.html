@@ -253,13 +253,42 @@
         <button id="submission-more" class="button button-dark small" type="button" hidden>Load more submissions</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="wallet-heading" data-dashboard-view>
-        <h3 id="wallet-heading">Wallet</h3>
-        <p id="wallet-status" role="status" aria-live="polite">Loading wallet...</p>
-        <p class="workspace-hint">Wallet credits are not confirmation that a withdrawal has been paid.</p>
-        <form id="withdrawal-form" class="workspace-form">
+      <section class="workspace-panel wallet-dashboard" aria-labelledby="wallet-heading" data-dashboard-view>
+        <div class="wallet-intro">
+          <div>
+            <p class="wallet-eyebrow">YOUR FINANCES</p>
+            <h3 id="wallet-heading">Your wallet<span>.</span></h3>
+            <p>Keep track of your balance and manage withdrawal requests in one place.</p>
+          </div>
+          <button id="wallet-refresh" class="wallet-refresh" type="button">Refresh balance <span aria-hidden="true">↻</span></button>
+        </div>
+
+        <div class="wallet-balances" aria-label="Wallet balances">
+          <article class="wallet-balance wallet-balance-available">
+            <div class="wallet-balance-top"><span>AVAILABLE BALANCE</span><span class="wallet-balance-icon" aria-hidden="true">↗</span></div>
+            <strong id="wallet-available">—</strong>
+            <p>Funds available in your wallet</p>
+            <span class="wallet-currency">USD WALLET</span>
+          </article>
+          <article class="wallet-balance wallet-balance-pending">
+            <div class="wallet-balance-top"><span>PENDING BALANCE</span><span class="wallet-pending-dot" aria-hidden="true"></span></div>
+            <strong id="wallet-pending">—</strong>
+            <p>Funds recorded as pending</p>
+          </article>
+        </div>
+        <p id="wallet-status" class="wallet-status" role="status" aria-live="polite">Loading wallet...</p>
+        <p class="wallet-disclaimer"><span aria-hidden="true">i</span> A wallet credit is not confirmation that a withdrawal has been paid.</p>
+
+        <div class="wallet-layout">
+        <div class="wallet-panel wallet-withdrawal">
+          <div class="wallet-panel-header">
+            <div><p class="wallet-eyebrow">MOVE YOUR FUNDS</p><h4>Request a withdrawal</h4><p>Tell us where you would like your payout sent.</p></div>
+            <span class="wallet-panel-number" aria-hidden="true">01</span>
+          </div>
+          <form id="withdrawal-form" class="workspace-form">
           <label for="withdrawal-amount">Amount (USD cents)</label>
-          <input id="withdrawal-amount" name="amount_cents" inputmode="numeric" pattern="[1-9][0-9]*" required placeholder="1500000">
+          <input id="withdrawal-amount" name="amount_cents" inputmode="numeric" pattern="[1-9][0-9]*" required placeholder="1500000" aria-describedby="withdrawal-amount-help">
+          <p id="withdrawal-amount-help">Enter cents: 1500000 = $15,000.00 USD.</p>
           <label for="withdrawal-method">Withdrawal method</label>
           <select id="withdrawal-method" name="method" required>
             <option value="USDT">USDT</option>
@@ -268,14 +297,22 @@
           </select>
           <label for="withdrawal-destination">Destination</label>
           <textarea id="withdrawal-destination" name="destination" maxlength="1000" required></textarea>
-          <p class="workspace-hint">Minimum: $15,000. The separate fee is 25%: 15% withdrawal fee and 10% company charge. Eligible partners may be exempt. Your exact fee is shown before submission and paid independently.</p>
-          <button class="button button-dark" type="submit">Request withdrawal</button>
+          <div class="wallet-fee-note"><strong>Before you request</strong><p>Minimum withdrawal: $15,000. A separate 25% fee applies (15% withdrawal fee and 10% company charge); eligible partners may be exempt. Your exact fee and recipient are shown before submission. The fee is paid separately.</p></div>
+          <button class="button button-dark" type="submit">Review withdrawal <span aria-hidden="true">↗</span></button>
           <p id="withdrawal-form-status" role="status" aria-live="polite"></p>
-        </form>
-        <button id="withdrawals-refresh" class="button button-dark small" type="button">Refresh withdrawals</button>
-        <p id="withdrawals-status" role="status" aria-live="polite"></p>
-        <div id="withdrawals" class="submission-list"></div>
-        <button id="withdrawals-more" class="button button-dark small" type="button" hidden>Load more withdrawals</button>
+          </form>
+        </div>
+        <div class="wallet-panel wallet-activity">
+          <div class="wallet-panel-header">
+            <div><p class="wallet-eyebrow">YOUR ACTIVITY</p><h4>Withdrawal history</h4><p>Follow your requests and their latest status.</p></div>
+            <span class="wallet-panel-number" aria-hidden="true">02</span>
+          </div>
+          <button id="withdrawals-refresh" class="wallet-refresh" type="button">Refresh history <span aria-hidden="true">↻</span></button>
+          <p id="withdrawals-status" class="wallet-activity-status" role="status" aria-live="polite"></p>
+          <div id="withdrawals" class="submission-list"></div>
+          <button id="withdrawals-more" class="button button-dark small" type="button" hidden>Load more withdrawals</button>
+        </div>
+        </div>
       </section>
 
       <section class="workspace-panel" aria-labelledby="offers-heading" data-dashboard-view>
