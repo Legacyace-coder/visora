@@ -44,10 +44,15 @@
         <input name="email" type="email" autocomplete="email" required>
       </label>
 
-      <label>Password
-        <input name="password" type="password" minlength="8" maxlength="128"
+      <label for="register-password">Password</label>
+      <div class="password-field">
+        <input id="register-password" name="password" type="password" minlength="8" maxlength="128"
           autocomplete="new-password" required>
-      </label>
+        <button class="password-toggle" type="button" data-password-toggle aria-controls="register-password" aria-label="Show password" hidden>
+          <svg data-password-show-icon aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <svg data-password-hide-icon aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" hidden><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle><path d="M3 3l18 18"></path></svg>
+        </button>
+      </div>
 
       <div id="photographer-referral-fields">
         <label>Photographer referral code

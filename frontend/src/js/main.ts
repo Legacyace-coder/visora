@@ -36,6 +36,23 @@ if (year) {
   year.textContent = String(new Date().getFullYear());
 }
 
+document.querySelectorAll<HTMLButtonElement>("[data-password-toggle]").forEach((button) => {
+  const inputId = button.getAttribute("aria-controls");
+  const input = inputId ? document.getElementById(inputId) : null;
+  const showIcon = button.querySelector<SVGElement>("[data-password-show-icon]");
+  const hideIcon = button.querySelector<SVGElement>("[data-password-hide-icon]");
+  if (!(input instanceof HTMLInputElement) || !showIcon || !hideIcon) return;
+  const setVisible = (visible: boolean): void => {
+    input.type = visible ? "text" : "password";
+    button.setAttribute("aria-label", visible ? "Hide password" : "Show password");
+    showIcon.toggleAttribute("hidden", visible);
+    hideIcon.toggleAttribute("hidden", !visible);
+  };
+  button.addEventListener("click", () => setVisible(input.type === "password"));
+  input.form?.addEventListener("reset", () => setVisible(false));
+  button.hidden = false;
+});
+
 const agentSearchForm = document.querySelector<HTMLFormElement>("#agent-search-form");
 const agentSearchInput = document.querySelector<HTMLInputElement>("#agent-search-code");
 const agentSearchStatus = document.querySelector<HTMLElement>("#agent-search-status");
@@ -2095,12 +2112,13 @@ async function loadWeeklyTarget(): Promise<void> {
   const progress = document.querySelector<HTMLProgressElement>("#weekly-target-progress");
   const remaining = document.querySelector<HTMLElement>("#weekly-target-remaining");
   const period = document.querySelector<HTMLElement>("#weekly-target-period");
+  const badge = document.querySelector<HTMLElement>("#partner-badge");
   if (!section || !status || !count || !progress || !remaining || !period) return;
 
   const requestId = ++weeklyTargetRequest;
   window.clearTimeout(weeklyTargetTimer);
-  section.hidden = true;
-  status.textContent = "Loading weekly target...";
+  let nextRefresh = 60000;
+  if (section.hidden) status.textContent = "Loading weekly target...";
   try {
     const response = await fetch(`${apiBaseUrl}/photographer/weekly-target`, { credentials: "include" });
     const result = await response.json() as {
@@ -2110,6 +2128,8 @@ async function loadWeeklyTarget(): Promise<void> {
     if (requestId !== weeklyTargetRequest) return;
     if (!response.ok) throw new Error(result.detail || "Weekly target could not be loaded.");
     if (result.is_partner === false) {
+      section.hidden = true;
+      if (badge) badge.hidden = true;
       status.textContent = "";
       return;
     }
@@ -2133,12 +2153,19 @@ async function loadWeeklyTarget(): Promise<void> {
     remaining.textContent = left ? `${left} more approved photograph${left === 1 ? "" : "s"} to reach your target.` : "Weekly target reached.";
     period.textContent = `Week of ${dateFormat.format(start)}. Resets ${dateFormat.format(end)} at 00:00 UTC.`;
     section.hidden = false;
+    if (badge) badge.hidden = false;
     status.textContent = "";
     const untilReset = end.getTime() - Date.now();
-    weeklyTargetTimer = window.setTimeout(() => void loadWeeklyTarget(), untilReset > 0 ? untilReset + 1000 : 60000);
+    if (untilReset > 0) nextRefresh = Math.min(nextRefresh, untilReset + 1000);
   } catch (error) {
     if (requestId !== weeklyTargetRequest) return;
+    section.hidden = true;
+    if (badge) badge.hidden = true;
     status.textContent = error instanceof Error ? error.message : "Weekly target could not be loaded.";
+  } finally {
+    if (requestId === weeklyTargetRequest && !document.hidden) {
+      weeklyTargetTimer = window.setTimeout(() => void loadWeeklyTarget(), nextRefresh);
+    }
   }
 }
 
@@ -2177,7 +2204,9 @@ document.querySelector<HTMLButtonElement>("#overview-refresh")
   });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && document.querySelector("#weekly-target")) {
+  if (document.hidden) {
+    window.clearTimeout(weeklyTargetTimer);
+  } else if (document.querySelector("#weekly-target")) {
     void loadWeeklyTarget();
     void loadAcquisitionLimit();
   }

@@ -22,9 +22,13 @@
 
     <div class="dashboard-layout">
     <nav class="dashboard-nav dashboard-nav-with-profile" aria-label="Photographer workspace">
-      <div class="dashboard-nav-profile" aria-hidden="true">
+      <div class="dashboard-nav-profile">
         <img id="menu-profile-photo" alt="" hidden>
-        <span id="menu-profile-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
+        <span id="menu-profile-placeholder" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
+        <div id="partner-badge" class="partner-badge" role="status" aria-label="Approved Visora partner" hidden>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l4 4L19 6"></path></svg>
+          Partner
+        </div>
       </div>
       <p class="dashboard-nav-label">Your workspace</p>
       <div class="dashboard-nav-links">
