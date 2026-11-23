@@ -30,6 +30,55 @@ def set_role(monkeypatch, role):
     )
 
 
+@pytest.mark.parametrize("role", ["agent", "photographer"])
+def test_agreement_upload_and_partner_progress_require_admin(client, monkeypatch, role):
+    set_role(monkeypatch, role)
+    assert client.post("/admin/agreements/partnership", files={"file": ("terms.pdf", b"%PDF-1.4", "application/pdf")}).status_code == 403
+    assert client.get("/admin/partners/weekly-progress").status_code == 403
+
+
+def test_agreement_upload_validates_pdf_and_sends_encoded_bytes(client, monkeypatch):
+    set_role(monkeypatch, "admin")
+    calls = []
+    def rpc(request, name, params):
+        calls.append((name, params))
+        return APPLICATION_ID
+    monkeypatch.setattr(partnership, "partnership_rpc", rpc)
+    assert client.post("/admin/agreements/partnership", files={"file": ("terms.pdf", b"not a pdf", "application/pdf")}).status_code == 422
+    response = client.post("/admin/agreements/partnership", files={"file": ("terms.pdf", b"%PDF-1.4\nsample", "application/pdf")})
+    assert response.status_code == 201
+    assert calls == [("upload_agreement_document", {
+        "p_kind": "partnership", "p_base64": base64.b64encode(b"%PDF-1.4\nsample").decode(),
+    })]
+
+
+def test_agreement_download_uses_attachment_and_handles_missing(client, monkeypatch):
+    set_role(monkeypatch, "photographer")
+    monkeypatch.setattr(partnership, "partnership_rpc", lambda *args: None)
+    assert client.get("/agreements/partnership").status_code == 404
+    monkeypatch.setattr(partnership, "partnership_rpc", lambda *args: {
+        "id": APPLICATION_ID, "base64": base64.b64encode(b"%PDF-1.4\nsample").decode(),
+    })
+    response = client.get("/agreements/partnership")
+    assert response.status_code == 200
+    assert response.content == b"%PDF-1.4\nsample"
+    assert response.headers["content-disposition"] == 'attachment; filename="partnership-agreement.pdf"'
+
+
+def test_admin_partner_progress_paginates(client, monkeypatch):
+    set_role(monkeypatch, "admin")
+    calls = []
+    def rpc(request, name, params):
+        calls.append((name, params))
+        return [{"photographer_id": str(i)} for i in range(26)]
+    monkeypatch.setattr(partnership, "partnership_rpc", rpc)
+    response = client.get("/admin/partners/weekly-progress?offset=25")
+    assert response.status_code == 200
+    assert len(response.json()["partners"]) == 25
+    assert response.json()["has_more"] is True
+    assert calls == [("admin_partner_weekly_progress", {"p_offset": 25})]
+
+
 def test_application_encrypts_card_code(client, monkeypatch):
     set_role(monkeypatch, "photographer")
     key = Fernet.generate_key()

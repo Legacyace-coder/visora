@@ -1888,6 +1888,30 @@ html {
   .wallet-withdrawal .workspace-form button { width: 100%; }
 }
 
+.partnership-hero { padding: clamp(24px, 4vw, 45px); border-radius: 12px; color: #f5f8f2; background: linear-gradient(120deg, #253b31, #4d694a); }
+.partnership-eyebrow { margin: 0; color: #687c65; font-size: 10px; font-weight: 700; letter-spacing: .15em; }
+.partnership-hero .partnership-eyebrow { color: #d3e2cc; }
+.partnership-hero h3 { margin: 15px 0; font-size: clamp(38px, 5vw, 58px); font-weight: 500; letter-spacing: -.06em; }
+.partnership-hero h3 span { color: #b7cf9f; }
+.partnership-hero > p:not(.partnership-eyebrow) { max-width: 500px; color: #e0eadc; font-size: 13px; line-height: 1.8; }
+.partnership-benefits { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.partnership-benefits span { padding: 8px 12px; border: 1px solid rgba(255,255,255,.3); border-radius: 30px; font-size: 11px; }
+.partnership-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.partnership-steps article, .partnership-panel { min-width: 0; padding: 22px; border: 1px solid var(--workspace-border); border-radius: 10px; }
+.partnership-steps span { color: #789a70; font-size: 12px; font-weight: 700; }
+.partnership-steps h4, .partnership-panel h4 { margin: 14px 0 8px; font-size: 19px; font-weight: 500; letter-spacing: -.03em; }
+.partnership-steps p { margin: 0; color: var(--workspace-muted); font-size: 12px; line-height: 1.7; }
+.partnership-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
+.partnership-panel > .workspace-hint { margin: 12px 0; }
+.partnership-panel > .button { margin: 8px 0; }
+.partnership-download { display: block; margin: 12px 0; padding: 0; border: 0; color: inherit; background: none; text-decoration: underline; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.partnership-download:disabled { opacity: .6; }
+#admin-partner-progress-heading { margin-top: 40px; }
+#admin-partner-progress progress { width: min(100%, 360px); accent-color: #789a70; }
+[data-theme="dark"] .partnership-panel .partnership-eyebrow { color: #b7cba9; }
+@media (max-width: 900px) { .partnership-layout { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .partnership-steps { grid-template-columns: 1fr; } }
+
 @media (max-width: 800px) {
   .dashboard-page { padding: 0 5%; }
   .dashboard-layout { display: block; }

@@ -2,6 +2,7 @@ import base64
 import binascii
 import json
 import logging
+from typing import Literal
 from uuid import UUID
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -16,6 +17,7 @@ from app.core.security import require_roles
 
 router = APIRouter(tags=["Partnership applications"])
 logger = logging.getLogger(__name__)
+MAX_AGREEMENT_BYTES = 2 * 1024 * 1024
 
 
 class PartnershipReview(BaseModel):
@@ -64,6 +66,70 @@ def partnership_rpc(request: Request, name: str, params: dict):
             raise HTTPException(422, "The application or decision is invalid.") from error
         logger.error("Partnership operation %s failed: %s", name, type(error).__name__)
         raise HTTPException(502, "The partnership operation could not be completed.") from error
+
+
+@router.post("/admin/agreements/{kind}", status_code=201)
+async def upload_agreement(
+    kind: Literal["partnership", "acquisition"],
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_roles("admin")),
+):
+    content = await file.read(MAX_AGREEMENT_BYTES + 1)
+    if len(content) > MAX_AGREEMENT_BYTES:
+        raise HTTPException(413, "Agreement PDFs must be 2 MB or smaller.")
+    if not content.startswith(b"%PDF-"):
+        raise HTTPException(422, "Choose a PDF agreement.")
+    result = partnership_rpc(request, "upload_agreement_document", {
+        "p_kind": kind, "p_base64": base64.b64encode(content).decode("ascii"),
+    })
+    try:
+        document_id = str(UUID(result))
+    except (ValueError, TypeError, AttributeError) as error:
+        logger.error("Agreement upload returned an invalid response")
+        raise HTTPException(502, "Agreement upload could not be confirmed.") from error
+    return {"id": document_id}
+
+
+@router.get("/agreements/{kind}")
+def download_agreement(
+    kind: Literal["partnership", "acquisition"],
+    request: Request,
+    document_id: UUID | None = None,
+    current_user: dict = Depends(require_roles("admin", "photographer")),
+):
+    result = partnership_rpc(request, "get_agreement_document", {
+        "p_kind": kind, "p_id": str(document_id) if document_id else None,
+    })
+    if result is None:
+        raise HTTPException(404, "No agreement has been uploaded yet.")
+    try:
+        if not isinstance(result, dict):
+            raise ValueError("Invalid agreement")
+        UUID(result["id"])
+        content = base64.b64decode("".join(result["base64"].split()), validate=True)
+        if not content.startswith(b"%PDF-") or len(content) > MAX_AGREEMENT_BYTES:
+            raise ValueError("Invalid PDF")
+    except (KeyError, TypeError, ValueError, AttributeError, binascii.Error) as error:
+        logger.error("Agreement download returned an invalid response: %s", error)
+        raise HTTPException(502, "Agreement could not be downloaded.") from error
+    return Response(content, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="{kind}-agreement.pdf"',
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+    })
+
+
+@router.get("/admin/partners/weekly-progress")
+def admin_partner_weekly_progress(
+    request: Request, offset: int = Query(default=0, ge=0),
+    current_user: dict = Depends(require_roles("admin")),
+):
+    rows = partnership_rpc(request, "admin_partner_weekly_progress", {"p_offset": offset})
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        logger.error("Partner weekly progress returned an invalid response")
+        raise HTTPException(502, "Partner progress could not be loaded.")
+    return {"partners": rows[:25], "has_more": len(rows) > 25}
 
 
 @router.post("/photographer/partnership-applications", status_code=201)

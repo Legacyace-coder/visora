@@ -118,6 +118,12 @@
       <p id="admin-partnerships-status" role="status" aria-live="polite"></p>
       <div id="admin-partnerships" class="submission-list"></div>
       <button id="admin-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
+      <h3 id="admin-partner-progress-heading">Partner weekly progress</h3>
+      <p class="workspace-hint">First-time approved photographs since partnership approval, for the current Monday–Monday UTC week.</p>
+      <button id="admin-partner-progress-refresh" class="button button-dark small" type="button">Refresh progress</button>
+      <p id="admin-partner-progress-status" role="status" aria-live="polite"></p>
+      <div id="admin-partner-progress" class="submission-list"></div>
+      <button id="admin-partner-progress-more" class="button button-dark small" type="button" hidden>Load more partners</button>
     </section>
 
     <section class="workspace-panel" aria-labelledby="admin-withdrawals-heading" data-dashboard-view>
@@ -161,6 +167,21 @@
           Save purchase link
         </button>
         <p id="partnership-purchase-status" role="status" aria-live="polite"></p>
+      </form>
+      <h2>Agreement documents</h2>
+      <p class="admin-settings-description">Upload PDF agreements (up to 2 MB). Previous uploads are retained.</p>
+      <form class="workspace-form agreement-upload" data-agreement-kind="partnership">
+        <label for="partnership-agreement-file">Partnership agreement PDF</label>
+        <input id="partnership-agreement-file" type="file" accept="application/pdf,.pdf" required>
+        <button class="button button-dark small" type="submit">Upload partnership agreement</button>
+        <p role="status" aria-live="polite"></p>
+      </form>
+      <form class="workspace-form agreement-upload" data-agreement-kind="acquisition">
+        <label for="acquisition-agreement-file">Acquisition agreement PDF</label>
+        <input id="acquisition-agreement-file" type="file" accept="application/pdf,.pdf" required>
+        <p>Stored for the planned automatic-acquisition workflow; current offers still use their own terms.</p>
+        <button class="button button-dark small" type="submit">Upload acquisition agreement</button>
+        <p role="status" aria-live="polite"></p>
       </form>
     </section>
 

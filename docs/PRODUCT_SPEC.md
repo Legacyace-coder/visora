@@ -54,6 +54,10 @@ dashboard. Weeks run Monday 00:00 UTC to the next Monday 00:00 UTC. Each photo
 counts only in the week of its first accepted submission, and only if that
 first approval was at or after partnership approval. Pending and rejected
 submissions do not count; counts may exceed the target.
+Administrators can view current-week progress for approved partners.
+Administrators can upload versioned partnership and acquisition agreement
+PDFs; photographers can download the current partnership agreement. The
+acquisition agreement upload does not alter the existing offer workflow.
 Photographers and agents can update display names, private profile photos and
 credentials. Agents can see referred display names and aggregate submission
 activity; administrators have platform counts and a read-only account list.

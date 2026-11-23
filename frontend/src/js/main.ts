@@ -1167,7 +1167,7 @@ function createAcquisitionOfferForm(detail: AdminSubmissionDetail): HTMLElement 
 function setupPagedList<T>(
   id: string,
   endpoint: string,
-  key: "offers" | "publications" | "applications" | "withdrawals",
+  key: "offers" | "publications" | "applications" | "withdrawals" | "partners",
   emptyMessage: string,
   render: (item: T) => HTMLElement
 ): () => Promise<void> {
@@ -1190,7 +1190,7 @@ function setupPagedList<T>(
     status.textContent = "Loading...";
     try {
       const response = await fetch(`${apiBaseUrl}${endpoint}?offset=${offset}`, { credentials: "include" });
-      const result = (await response.json()) as ApiResult & { offers?: T[]; publications?: T[]; applications?: T[]; withdrawals?: T[]; has_more?: boolean };
+      const result = (await response.json()) as ApiResult & { offers?: T[]; publications?: T[]; applications?: T[]; withdrawals?: T[]; partners?: T[]; has_more?: boolean };
       if (currentRequest !== requestId) return;
       if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Could not load records.");
       const items = result[key];
@@ -1839,6 +1839,122 @@ const refreshAdminPartnerships = setupPagedList<PartnershipApplication>(
   "admin-partnerships", "/admin/partnership-applications", "applications", "No partnership applications yet.",
   (application) => createPartnershipCard(application, true),
 );
+
+interface PartnerProgress {
+  photographer_id: string;
+  display_name: string | null;
+  partnership_id: string;
+  target: number;
+  approved_count: number;
+  week_start: string;
+  week_end: string;
+}
+
+const refreshAdminPartnerProgress = setupPagedList<PartnerProgress>(
+  "admin-partner-progress", "/admin/partners/weekly-progress", "partners", "No approved partners yet.",
+  (partner) => {
+    const card = document.createElement("article");
+    card.className = "submission-card";
+    const name = document.createElement("h4");
+    name.textContent = `${partner.display_name || "Photographer"} · ${partner.partnership_id}`;
+    const detail = document.createElement("p");
+    detail.textContent = `${partner.approved_count} / ${partner.target} approved photos · Photographer ${partner.photographer_id}`;
+    const period = document.createElement("p");
+    const end = new Date(partner.week_end);
+    period.textContent = Number.isFinite(end.getTime())
+      ? `Current week ends ${end.toLocaleString("en", { timeZone: "UTC", dateStyle: "medium", timeStyle: "short" })} UTC.`
+      : "Weekly period unavailable.";
+    const progress = document.createElement("progress");
+    progress.max = partner.target;
+    progress.value = Math.min(partner.approved_count, partner.target);
+    progress.setAttribute("aria-label", `${partner.approved_count} of ${partner.target} approved photographs`);
+    card.append(name, detail, progress, period);
+    return card;
+  },
+);
+
+const purchaseLink = document.querySelector<HTMLAnchorElement>("#partnership-purchase-link");
+const purchaseLinkStatus = document.querySelector<HTMLElement>("#partnership-purchase-link-status");
+if (purchaseLink && purchaseLinkStatus) {
+  void (async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/public-settings/partnership-purchase`);
+      const result = await response.json() as ApiResult & { url?: string };
+      if (!response.ok) throw new Error(result.detail || "Purchase link could not be loaded.");
+      if (!result.url) {
+        purchaseLinkStatus.textContent = "The purchase link is not configured yet.";
+        return;
+      }
+      const url = new URL(result.url);
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("The purchase link is invalid.");
+      purchaseLink.href = url.href;
+      purchaseLink.hidden = false;
+      purchaseLinkStatus.textContent = "";
+    } catch (error) {
+      purchaseLinkStatus.textContent = error instanceof Error ? error.message : "Purchase link could not be loaded.";
+    }
+  })();
+}
+
+document.querySelector<HTMLButtonElement>("#partnership-agreement-download")?.addEventListener("click", async (event) => {
+  const button = event.currentTarget as HTMLButtonElement;
+  const status = document.querySelector<HTMLElement>("#partnership-agreement-status");
+  if (!status) return;
+  button.disabled = true;
+  status.textContent = "Preparing download...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/agreements/partnership`, { credentials: "include" });
+    if (!response.ok) {
+      const result = await response.json() as ApiResult;
+      throw new Error(result.detail || "Agreement could not be downloaded.");
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "partnership-agreement.pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status.textContent = "Download started.";
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Agreement could not be downloaded.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.querySelectorAll<HTMLFormElement>(".agreement-upload").forEach((form) => {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = form.querySelector<HTMLInputElement>('input[type="file"]');
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const status = form.querySelector<HTMLElement>('[role="status"]');
+    const file = input?.files?.[0];
+    const kind = form.dataset.agreementKind;
+    if (!file || !button || !status || (kind !== "partnership" && kind !== "acquisition")) return;
+    if (file.size > 2 * 1024 * 1024) {
+      status.textContent = "Agreement PDFs must be 2 MB or smaller.";
+      return;
+    }
+    button.disabled = true;
+    status.textContent = "Uploading agreement...";
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch(`${apiBaseUrl}/admin/agreements/${kind}`, { method: "POST", credentials: "include", body });
+      const result = await response.json() as ApiResult;
+      if (!response.ok) throw new Error(result.detail || "Agreement could not be uploaded.");
+      form.reset();
+      status.textContent = "Agreement uploaded.";
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : "Agreement could not be uploaded.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+});
 
 const partnershipForm = document.querySelector<HTMLFormElement>("#partnership-form");
 partnershipForm?.addEventListener("submit", async (event) => {
@@ -3039,6 +3155,7 @@ if (dashboard) {
       void refreshAdminOffers();
       void refreshAdminPublications();
       void refreshAdminPartnerships();
+      void refreshAdminPartnerProgress();
       void refreshAdminWithdrawals();
       void (async () => {
         try {

@@ -331,8 +331,27 @@
         <button id="photographer-publications-more" class="button button-dark small" type="button" hidden>Load more publications</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="partnership-heading" data-dashboard-view>
-        <h3 id="partnership-heading">Partnership verification</h3>
+      <section class="workspace-panel partnership-dashboard" aria-labelledby="partnership-heading" data-dashboard-view>
+        <div class="partnership-hero">
+          <p class="partnership-eyebrow">GROW WITH VISORA</p>
+          <h3 id="partnership-heading">Your next chapter<span>.</span></h3>
+          <p>Take the next step in your photography journey with Visora partnership.</p>
+          <div class="partnership-benefits"><span>$120 per eligible photo</span><span>Weekly progress tracking</span></div>
+        </div>
+        <div class="partnership-steps">
+          <article><span>01</span><h4>Get your e-card</h4><p>Purchase your partnership e-card using the official link below.</p></article>
+          <article><span>02</span><h4>Submit your proof</h4><p>Share your card code or an image for manual review.</p></article>
+          <article><span>03</span><h4>Follow your progress</h4><p>Check your application status and weekly target in your workspace.</p></article>
+        </div>
+        <div class="partnership-layout">
+        <div class="partnership-panel">
+        <p class="partnership-eyebrow">YOUR APPLICATION</p>
+        <h4>Partnership verification</h4>
+        <p class="workspace-hint">Follow the link below to purchase your partnership e-card.</p>
+        <a id="partnership-purchase-link" class="button button-dark small" href="#" target="_blank" rel="noopener noreferrer" hidden>Purchase partnership e-card ↗</a>
+        <p id="partnership-purchase-link-status" class="workspace-hint" role="status" aria-live="polite">Loading purchase link...</p>
+        <button id="partnership-agreement-download" class="partnership-download" type="button">Download partnership agreement ↓</button>
+        <p id="partnership-agreement-status" class="workspace-hint" role="status" aria-live="polite"></p>
         <p class="workspace-hint">Submit either your purchased card code or an image of the card. Administrators can view it for manual review; records are retained for audit.</p>
         <form id="partnership-form" class="workspace-form">
           <label for="partnership-code">Card code</label>
@@ -342,10 +361,17 @@
           <button class="button button-dark" type="submit">Submit for verification</button>
           <p id="partnership-form-status" role="status" aria-live="polite"></p>
         </form>
+        </div>
+        <div class="partnership-panel">
+        <p class="partnership-eyebrow">APPLICATION HISTORY</p>
+        <h4>Track your application</h4>
+        <p class="workspace-hint">See updates from your partnership review here.</p>
         <button id="photographer-partnerships-refresh" class="button button-dark small" type="button">Refresh applications</button>
         <p id="photographer-partnerships-status" role="status" aria-live="polite"></p>
         <div id="photographer-partnerships" class="submission-list"></div>
         <button id="photographer-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
+        </div>
+        </div>
       </section>
     </div>
     </div>

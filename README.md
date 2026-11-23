@@ -91,6 +91,11 @@ Agent reports include referred display names and aggregate submission activity.
 Apply the weekly-target migration to enable partner progress on photographer
 dashboards. The target is 200 unique first-time approved photos per UTC week
 after partnership approval; submission approval counts every included photo.
+The partnership reporting and agreements migration adds administrator weekly
+progress and versioned PDF agreement uploads (maximum 2 MB). Apply it with
+the updated backend and frontend. Photographers can download the current
+partnership agreement; the uploaded acquisition agreement is stored for future
+use and does not change the existing offer or consent workflow.
 The non-partner acquisition-limit migration caps non-partners at 160 acquired
 photos and checks both submissions and offer acceptance. Apply it alongside the
 updated backend and frontend. Pending work does not reserve allowance.
