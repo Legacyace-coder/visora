@@ -88,9 +88,11 @@
       <p id="overview-status" role="status" aria-live="polite"></p>
     </section>
 
-    <section class="dashboard-account" id="account" data-dashboard-view>
+    <section class="dashboard-account creative-view account-view" id="account" data-dashboard-view>
       <p class="eyebrow">ACCOUNT DETAILS</p>
-      <h2>Account settings</h2>
+      <h2>Your account<span class="creative-period">.</span></h2>
+      <p class="creative-intro">Make this workspace yours. Manage your profile and sign-in details here.</p>
+      <div class="account-profile-card">
       <img id="profile-photo" class="profile-photo" alt="Your profile photo" hidden>
       <form id="profile-photo-form" class="workspace-form">
         <label for="profile-photo-file">Profile photo (JPEG, PNG or WebP, up to 2 MB)</label>
@@ -99,7 +101,8 @@
         <button id="profile-photo-delete" class="button button-dark small" type="button" hidden>Remove profile photo</button>
         <p id="profile-photo-status" role="status" aria-live="polite"></p>
       </form>
-
+      </div>
+      <div class="account-info-grid">
       <div class="account-detail">
         <span>Account type</span>
         <strong>Photographer</strong>
@@ -114,13 +117,17 @@
         <span>Photographer referral code</span>
         <strong id="account-code">Loading...</strong>
       </div>
+      </div>
+      <div class="account-settings-grid">
       <form id="display-name-form" class="workspace-form">
+        <h3>Public identity</h3>
         <label for="display-name">Display name</label>
         <input id="display-name" name="display_name" maxlength="100" required>
         <button class="button button-dark small" type="submit">Save display name</button>
         <p id="display-name-status" role="status" aria-live="polite"></p>
       </form>
       <form id="email-change-form" class="workspace-form">
+        <h3>Email address</h3>
         <label for="new-email">New email address</label>
         <input id="new-email" name="new_email" type="email" maxlength="254" autocomplete="email" required>
         <label for="email-current-password">Current password</label>
@@ -129,6 +136,7 @@
         <p id="email-change-status" role="status" aria-live="polite"></p>
       </form>
       <form id="password-change-form" class="workspace-form">
+        <h3>Password &amp; security</h3>
         <label for="password-current">Current password</label>
         <input id="password-current" name="current_password" type="password" maxlength="128" autocomplete="current-password" required>
         <label for="password-new">New password</label>
@@ -139,9 +147,10 @@
         <p id="password-change-status" role="status" aria-live="polite"></p>
         <a id="credential-login" href="/login.html" hidden>Sign in</a>
       </form>
+      </div>
     </section>
 
-    <section class="portfolio-section" aria-labelledby="portfolio-heading" data-dashboard-view>
+    <section class="portfolio-section creative-view portfolio-view" aria-labelledby="portfolio-heading" data-dashboard-view>
       <div class="portfolio-heading">
         <div>
           <p class="eyebrow">YOUR PHOTOGRAPHY</p>
@@ -170,9 +179,9 @@
       </div>
     </section>
 
-      <section class="workspace-panel" aria-labelledby="upload-heading" data-dashboard-view>
-        <p class="eyebrow">YOUR PHOTOGRAPHY</p>
-        <h3 id="upload-heading">Add to your portfolio</h3>
+      <section class="workspace-panel creative-view upload-view" aria-labelledby="upload-heading" data-dashboard-view>
+        <p class="eyebrow">THE START OF SOMETHING</p>
+        <h3 id="upload-heading">Add your work<span class="creative-period">.</span></h3>
         <p class="workspace-intro">Choose up to 50 photographs. Uploading adds them to your private portfolio; it does not submit them for review.</p>
         <form id="photo-upload-form" class="workspace-form">
           <label for="photo-file">Photographs</label>
@@ -204,8 +213,10 @@
         </form>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="collections-heading" data-dashboard-view>
-        <h3 id="collections-heading">Collections</h3>
+      <section class="workspace-panel creative-view collections-view" aria-labelledby="collections-heading" data-dashboard-view>
+        <p class="eyebrow">CURATE YOUR WORK</p>
+        <h3 id="collections-heading">Your collections<span class="creative-period">.</span></h3>
+        <p class="creative-intro">Bring related photographs together and give each story a place of its own.</p>
         <p class="workspace-hint">The photograph selector includes the photos loaded in your portfolio. Load more there to add older work.</p>
         <form id="collection-create-form" class="workspace-form">
           <label for="collection-title">New collection</label>
@@ -245,8 +256,10 @@
         <div id="submission-photo-selection"></div>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="submission-history-heading" data-dashboard-view>
-        <h3 id="submission-history-heading">Submission history</h3>
+      <section class="workspace-panel creative-view history-view" aria-labelledby="submission-history-heading" data-dashboard-view>
+        <p class="eyebrow">YOUR REVIEW ACTIVITY</p>
+        <h3 id="submission-history-heading">Submission history<span class="creative-period">.</span></h3>
+        <p class="creative-intro">Follow the journey of work you have shared for review.</p>
         <p class="workspace-hint">Refresh to see the latest review.</p>
         <button id="submission-refresh" class="button button-dark small" type="button">Refresh submissions</button>
         <div id="submission-list" class="submission-list" aria-live="polite"></div>
@@ -315,16 +328,20 @@
         </div>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="offers-heading" data-dashboard-view>
-        <h3 id="offers-heading">Acquisition offers and history</h3>
+      <section class="workspace-panel creative-view acquisitions-view" aria-labelledby="offers-heading" data-dashboard-view>
+        <p class="eyebrow">YOUR AGREEMENTS</p>
+        <h3 id="offers-heading">Acquisitions<span class="creative-period">.</span></h3>
+        <p class="creative-intro">Review offers and revisit the agreements you have accepted.</p>
         <button id="photographer-offers-refresh" class="button button-dark small" type="button">Refresh offers</button>
         <p id="photographer-offers-status" role="status" aria-live="polite"></p>
         <div id="photographer-offers" class="submission-list"></div>
         <button id="photographer-offers-more" class="button button-dark small" type="button" hidden>Load more offers</button>
       </section>
 
-      <section class="workspace-panel" aria-labelledby="publications-heading" data-dashboard-view>
-        <h3 id="publications-heading">Publication history</h3>
+      <section class="workspace-panel creative-view publications-view" aria-labelledby="publications-heading" data-dashboard-view>
+        <p class="eyebrow">YOUR WORK, OUT IN THE WORLD</p>
+        <h3 id="publications-heading">Publications<span class="creative-period">.</span></h3>
+        <p class="creative-intro">Keep track of where your photographs have been presented.</p>
         <button id="photographer-publications-refresh" class="button button-dark small" type="button">Refresh publications</button>
         <p id="photographer-publications-status" role="status" aria-live="polite"></p>
         <div id="photographer-publications" class="submission-list"></div>

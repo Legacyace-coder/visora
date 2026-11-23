@@ -36,6 +36,100 @@ if (year) {
   year.textContent = String(new Date().getFullYear());
 }
 
+const agentSearchForm = document.querySelector<HTMLFormElement>("#agent-search-form");
+const agentSearchInput = document.querySelector<HTMLInputElement>("#agent-search-code");
+const agentSearchStatus = document.querySelector<HTMLElement>("#agent-search-status");
+const agentSearchResult = document.querySelector<HTMLElement>("#agent-search-result");
+const agentSearchName = document.querySelector<HTMLElement>("#agent-search-name");
+const agentSearchActive = document.querySelector<HTMLElement>("#agent-search-active");
+const agentSearchPhoto = document.querySelector<HTMLImageElement>("#agent-search-photo");
+let agentSearchVersion = 0;
+let agentSearchController: AbortController | null = null;
+const agentSearchText = (key: string): string => window.homeLanguageMessage?.(key) ?? ({
+  invalid: "Enter a valid agent code, for example A-ABC-12345.",
+  searching: "Searching...",
+  missing: "No agent was found for this code.",
+  active: "Active agent",
+  inactive: "Inactive agent",
+  caution: "A code alone does not prove who is contacting you. Verify their identity through an official Visora channel.",
+  unavailable: "Agent verification is temporarily unavailable. Please try again.",
+} as Record<string, string>)[key];
+function setAgentSearchText(element: HTMLElement, key: string): void {
+  element.dataset.messageKey = key;
+  element.textContent = agentSearchText(key);
+}
+document.addEventListener("home-language-changed", () => {
+  [agentSearchStatus, agentSearchActive].forEach((element) => {
+    if (element?.dataset.messageKey) setAgentSearchText(element, element.dataset.messageKey);
+  });
+});
+agentSearchInput?.addEventListener("input", () => {
+  agentSearchVersion += 1;
+  agentSearchController?.abort();
+  if (agentSearchResult) agentSearchResult.hidden = true;
+  if (agentSearchStatus) {
+    agentSearchStatus.textContent = "";
+    delete agentSearchStatus.dataset.messageKey;
+  }
+});
+agentSearchForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!agentSearchInput || !agentSearchStatus || !agentSearchResult || !agentSearchName || !agentSearchActive || !agentSearchPhoto) return;
+  const code = agentSearchInput.value.trim().toUpperCase();
+  const searchVersion = ++agentSearchVersion;
+  agentSearchController?.abort();
+  agentSearchResult.hidden = true;
+  agentSearchPhoto.hidden = true;
+  agentSearchPhoto.removeAttribute("src");
+  if (!/^A-[A-Z0-9]{3}-[A-Z0-9]{5}$/.test(code)) {
+    setAgentSearchText(agentSearchStatus, "invalid");
+    return;
+  }
+  const button = agentSearchForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (button) button.disabled = true;
+  const searchController = new AbortController();
+  agentSearchController = searchController;
+  const timeout = window.setTimeout(() => searchController.abort(), 15000);
+  setAgentSearchText(agentSearchStatus, "searching");
+  try {
+    const response = await fetch(`${apiBaseUrl}/public/agents/${encodeURIComponent(code)}`, { cache: "no-store", signal: searchController.signal });
+    if (searchVersion !== agentSearchVersion) return;
+    if (response.status === 404) {
+      setAgentSearchText(agentSearchStatus, "missing");
+      return;
+    }
+    if (!response.ok) throw new Error("Agent verification request failed");
+    const result: unknown = await response.json();
+    if (searchVersion !== agentSearchVersion) return;
+    if (!result || typeof result !== "object" || !("display_name" in result) || typeof result.display_name !== "string" ||
+        !("active" in result) || typeof result.active !== "boolean" || !("photo" in result)) throw new Error("Invalid agent response");
+    if (result.photo !== null) {
+      if (typeof result.photo !== "object" || !("mime_type" in result.photo) || !("base64" in result.photo) ||
+          typeof result.photo.mime_type !== "string" || typeof result.photo.base64 !== "string" ||
+          !["image/jpeg", "image/png", "image/webp"].includes(result.photo.mime_type) ||
+          !/^[A-Za-z0-9+/]*={0,2}$/.test(result.photo.base64)) throw new Error("Invalid agent photo");
+      agentSearchPhoto.src = `data:${result.photo.mime_type};base64,${result.photo.base64}`;
+      agentSearchPhoto.alt = "";
+      agentSearchPhoto.hidden = false;
+    }
+    agentSearchName.textContent = result.display_name;
+    setAgentSearchText(agentSearchActive, result.active ? "active" : "inactive");
+    agentSearchResult.hidden = false;
+    setAgentSearchText(agentSearchStatus, "caution");
+  } catch (error) {
+    if (searchVersion === agentSearchVersion) {
+      console.error("Agent search failed.", error);
+      setAgentSearchText(agentSearchStatus, "unavailable");
+    }
+  } finally {
+    window.clearTimeout(timeout);
+    if (agentSearchController === searchController) {
+      agentSearchController = null;
+      if (button) button.disabled = false;
+    }
+  }
+});
+
 document.querySelectorAll<HTMLElement>("[data-photo-carousel]").forEach((carousel) => {
   const slides = Array.from(carousel.querySelectorAll<HTMLElement>("[data-photo-slide]"));
   const controls = carousel.querySelector<HTMLElement>("[data-carousel-controls]");
@@ -168,40 +262,6 @@ async function getSessionUser(): Promise<SessionUser | null> {
 const registerForm =
   document.querySelector<HTMLFormElement>("#register-form");
 
-const accountType =
-  document.querySelector<HTMLSelectElement>("#account-type");
-
-const referralFields = document.querySelector<HTMLElement>(
-  "#photographer-referral-fields"
-);
-
-const displayNameCaption = document.querySelector<HTMLElement>(
-  "#display-name-caption"
-);
-
-function updateRegistrationFields(): void {
-  if (!accountType || !referralFields) return;
-
-  const isPhotographer = accountType.value === "photographer";
-
-  referralFields.hidden = !isPhotographer;
-
-  referralFields
-    .querySelectorAll<HTMLInputElement>("input")
-    .forEach((input) => {
-      input.disabled = !isPhotographer;
-    });
-
-  if (displayNameCaption) {
-    displayNameCaption.textContent = isPhotographer
-      ? "Photographer / studio name"
-      : "Agency / public name";
-  }
-}
-
-accountType?.addEventListener("change", updateRegistrationFields);
-updateRegistrationFields();
-
 registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
   event.preventDefault();
 
@@ -211,22 +271,14 @@ registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
     registerForm.querySelector<HTMLButtonElement>('button[type="submit"]');
 
   const formData = new FormData(registerForm);
-  const selectedType = String(formData.get("account_type"));
-
   const payload = {
-    account_type: selectedType,
+    account_type: "photographer",
     full_name: String(formData.get("full_name") ?? "").trim(),
     display_name: String(formData.get("display_name") ?? "").trim(),
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
-    referral_code:
-      selectedType === "photographer"
-        ? String(formData.get("referral_code") ?? "").trim().toUpperCase() || null
-        : null,
-    agent_code:
-      selectedType === "photographer"
-        ? String(formData.get("agent_code") ?? "").trim().toUpperCase() || null
-        : null,
+    referral_code: String(formData.get("referral_code") ?? "").trim().toUpperCase() || null,
+    agent_code: String(formData.get("agent_code") ?? "").trim().toUpperCase() || null,
   };
 
   message.textContent = "Creating your account...";
@@ -253,7 +305,6 @@ registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
       result.message || "Account created. You can now sign in.";
 
     registerForm.reset();
-    updateRegistrationFields();
   } catch (error) {
     message.textContent =
       error instanceof Error
@@ -2885,6 +2936,46 @@ const loadAdminAccounts = setupWorkspaceReport<{
     return card;
   },
 );
+
+const createAgentForm = document.querySelector<HTMLFormElement>("#admin-create-agent-form");
+const createAgentStatus = document.querySelector<HTMLElement>("#admin-create-agent-status");
+createAgentForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!createAgentStatus) return;
+  const formData = new FormData(createAgentForm);
+  const button = createAgentForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (button) button.disabled = true;
+  createAgentStatus.textContent = "Creating agent account...";
+  try {
+    const response = await fetch(`${apiBaseUrl}/admin/agents`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: String(formData.get("full_name") ?? ""),
+        display_name: String(formData.get("display_name") ?? ""),
+        email: String(formData.get("email") ?? ""),
+        password: String(formData.get("password") ?? ""),
+      }),
+    });
+    const result: unknown = await response.json();
+    if (!result || typeof result !== "object") throw new Error("Agent creation could not be confirmed. Check accounts before retrying.");
+    if (!response.ok) {
+      throw new Error("detail" in result && typeof result.detail === "string" ? result.detail : "Agent creation could not be confirmed. Check accounts before retrying.");
+    }
+    if (!("agent_code" in result) || typeof result.agent_code !== "string" || !/^A-[A-Z0-9]{3}-[A-Z0-9]{5}$/.test(result.agent_code)) {
+      throw new Error("Agent creation could not be confirmed. Check accounts before retrying.");
+    }
+    createAgentForm.reset();
+    createAgentStatus.textContent = `Agent account created. Agent code: ${result.agent_code}. Share the temporary password securely.`;
+    await loadAdminAccounts();
+  } catch (error) {
+    console.error("Agent creation failed.", error);
+    createAgentStatus.textContent = error instanceof Error ? error.message : "Agent creation could not be confirmed. Check accounts before retrying.";
+  } finally {
+    if (button) button.disabled = false;
+  }
+});
 
 function createAdminWithdrawalCard(withdrawal: Withdrawal): HTMLElement {
   const card = document.createElement("article");

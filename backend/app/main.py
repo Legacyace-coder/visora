@@ -11,6 +11,7 @@ from app.api.auth import router as auth_router
 from app.api.dashboard import router as dashboard_router
 from app.api.photographer import router as photographer_router
 from app.api.partnership import router as partnership_router
+from app.api.public_agents import router as public_agents_router
 from app.api.withdrawals import router as withdrawals_router
 from app.api.workspace import router as workspace_router
 from app.core.config import settings
@@ -58,6 +59,7 @@ app.include_router(photographer_router)
 app.include_router(acquisitions_router)
 app.include_router(workspace_router)
 app.include_router(partnership_router)
+app.include_router(public_agents_router)
 app.include_router(withdrawals_router)
 
 

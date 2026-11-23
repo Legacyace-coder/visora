@@ -60,8 +60,16 @@ API documentation:
 
 For deployments, set `APP_ENV=production` and configure the Supabase URL,
 publishable key, and secret key in the backend environment. The secret key is
-used only for server-side referral-code verification and must never be exposed
-to the frontend.
+used server-side for referral-code and public agent verification and must never
+be exposed to the frontend.
+After deploying the public-agent-verification migration and updated backend,
+only administrators can create agent accounts. Administrators set a temporary
+password in the account dashboard and must share it securely; agents should
+change it immediately. Agent email addresses are marked confirmed at creation,
+so administrators must verify them independently. Existing agents remain
+trusted; review existing accounts before deploying. The migration requires
+the Supabase authentication trigger that creates agent profiles and codes to
+remain in place.
 
 Apply the SQL migrations in `supabase/migrations` to the Supabase project
 before deploying. They add referral relationships, an authenticated
@@ -99,9 +107,20 @@ use and does not change the existing offer or consent workflow.
 The non-partner acquisition-limit migration caps non-partners at 160 acquired
 photos and checks both submissions and offer acceptance. Apply it alongside the
 updated backend and frontend. Pending work does not reserve allowance.
-Profile photos are private, stored in the database, and limited to 2 MB. Email
+Profile photos are stored in the database and limited to 2 MB. Photographer
+profile photos remain private. After applying the public-agent-verification
+migration, anyone with an agent's exact code can see the agent's display name,
+active or suspended status, and profile photo, if present. Notify agents before
+deployment and configure rate limiting on the public agent-verification API at
+the edge and backend origin. Public profile photos are resized and image
+metadata is removed. A matching code alone does not establish the
+identity of the person contacting a visitor. Email
 and password changes require the current password; configure and verify the
 Supabase email-confirmation settings before deployment.
+
+The homepage language selector provides local translations in English,
+Japanese, Korean, Simplified Chinese, Vietnamese, German and Spanish. It
+changes the homepage only; other pages remain in English.
 
 Partnership card codes and images are encrypted before storage with a separate
 `PARTNERSHIP_PROOF_ENCRYPTION_KEY`. Generate it with

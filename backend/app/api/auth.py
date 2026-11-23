@@ -247,12 +247,10 @@ def get_profile_for_token(client, access_token: str) -> dict:
 
 @router.post("/register", status_code=201)
 def register_account(payload: RegistrationRequest) -> dict:
-    if payload.account_type == "agent" and (
-        payload.referral_code or payload.agent_code
-    ):
+    if payload.account_type == "agent":
         raise HTTPException(
-            400,
-            "Agent accounts cannot register using referral codes.",
+            403,
+            "Agent accounts can only be created by an administrator.",
         )
 
     if payload.referral_code and not re.fullmatch(

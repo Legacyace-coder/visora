@@ -74,6 +74,20 @@
     <section class="workspace-panel" id="platform-accounts" aria-labelledby="platform-accounts-heading" data-dashboard-view>
       <p class="eyebrow">PLATFORM ACCOUNTS</p>
       <h2 id="platform-accounts-heading">Photographers and agents</h2>
+      <form id="admin-create-agent-form" class="workspace-form">
+        <h3>Create an agent account</h3>
+        <p>Set a temporary password and share it securely with the agent. Ask them to change it after signing in. The email is marked confirmed when the account is created.</p>
+        <label for="new-agent-full-name">Full name</label>
+        <input id="new-agent-full-name" name="full_name" minlength="2" maxlength="100" required>
+        <label for="new-agent-display-name">Public display name</label>
+        <input id="new-agent-display-name" name="display_name" maxlength="100" required>
+        <label for="new-agent-email">Email address</label>
+        <input id="new-agent-email" name="email" type="email" maxlength="254" required>
+        <label for="new-agent-password">Temporary password</label>
+        <input id="new-agent-password" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+        <button class="button button-dark small" type="submit">Create agent</button>
+        <p id="admin-create-agent-status" role="status" aria-live="polite"></p>
+      </form>
       <button id="admin-accounts-refresh" class="button button-dark small" type="button">Refresh accounts</button>
       <p id="admin-accounts-status" role="status" aria-live="polite"></p>
       <div id="admin-accounts-list" class="submission-list"></div>

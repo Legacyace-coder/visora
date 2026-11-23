@@ -58,8 +58,13 @@ Administrators can view current-week progress for approved partners.
 Administrators can upload versioned partnership and acquisition agreement
 PDFs; photographers can download the current partnership agreement. The
 acquisition agreement upload does not alter the existing offer workflow.
-Photographers and agents can update display names, private profile photos and
-credentials. Agents can see referred display names and aggregate submission
+Photographers and agents can update display names, profile photos and
+credentials. Photographer photos remain private; an agent's display name,
+status and photo are public to visitors who search the agent's exact code.
+New agent accounts are created by administrators using temporary passwords;
+existing agent accounts remain trusted.
+The homepage supports English, Japanese, Korean, Simplified Chinese,
+Vietnamese, German and Spanish. Agents can see referred display names and aggregate submission
 activity; administrators have platform counts and a read-only account list.
 Partnership applications support encrypted card proof and manual review.
 Commissions remain separate from the implemented withdrawal and suspension

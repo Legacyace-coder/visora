@@ -126,7 +126,7 @@ def test_photographer_registration_sends_both_referral_codes(monkeypatch):
     assert created_profile["referred_by_agent"] == "agent-referrer-id"
 
 
-def test_agent_registration_sends_agent_account_type(monkeypatch):
+def test_agent_registration_requires_admin(monkeypatch):
     fake = configure_fake_supabase(monkeypatch)
 
     payload = base_payload()
@@ -138,13 +138,8 @@ def test_agent_registration_sends_agent_account_type(monkeypatch):
 
     response = client.post("/auth/register", json=payload)
 
-    assert response.status_code == 201
-
-    metadata = fake.auth.payload["options"]["data"]
-
-    assert metadata["account_type"] == "agent"
-    assert metadata["referral_code"] is None
-    assert metadata["agent_code"] is None
+    assert response.status_code == 403
+    assert fake.auth.payload is None
 
 
 def test_public_registration_cannot_select_admin(monkeypatch):
@@ -166,8 +161,8 @@ def test_agent_cannot_register_with_referral_codes(monkeypatch):
 
     response = client.post("/auth/register", json=payload)
 
-    assert response.status_code == 400
-    assert "cannot register" in response.json()["detail"].lower()
+    assert response.status_code == 403
+    assert "administrator" in response.json()["detail"].lower()
 
 
 def test_invalid_photographer_code_is_rejected(monkeypatch):
