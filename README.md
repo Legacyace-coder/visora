@@ -52,6 +52,11 @@ dark mode. Their choice is saved in browser storage across Visora pages.
     Copy-Item .env.example .env
     uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
+Public registration requires Cloudflare Turnstile. Set `TURNSTILE_SITE_KEY` to
+the public site key and configure the matching Turnstile secret in Supabase
+Auth's CAPTCHA settings. Until both are configured, registration stays disabled
+and the form reports that human verification is unavailable.
+
 API health check:
 <http://127.0.0.1:8000/health>
 
