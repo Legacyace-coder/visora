@@ -47,6 +47,40 @@ const apiBaseUrl = isLocalDevelopment
   ? configuredApiBaseUrl ?? "http://127.0.0.1:8000"
   : "/api";
 
+// Visora Tawk.to live chat — public pages and photographer workspace only.
+const tawkAllowedPaths = new Set([
+  "/",
+  "/index.html",
+  "/about.html",
+  "/collection.html",
+  "/gallery.html",
+  "/photographers.html",
+  "/login.html",
+  "/register.html",
+  "/photographer/dashboard.html",
+]);
+
+if (
+  tawkAllowedPaths.has(window.location.pathname) &&
+  !document.querySelector('script[src^="https://embed.tawk.to/"]')
+) {
+  const tawkWindow = window as Window & {
+    Tawk_API?: Record<string, unknown>;
+    Tawk_LoadStart?: Date;
+  };
+
+  tawkWindow.Tawk_API = tawkWindow.Tawk_API ?? {};
+  tawkWindow.Tawk_LoadStart = new Date();
+
+  const tawkScript = document.createElement("script");
+  tawkScript.async = true;
+  tawkScript.src = "https://embed.tawk.to/6b070b6ced72a53caaed1e00/default";
+  tawkScript.charset = "UTF-8";
+  tawkScript.setAttribute("crossorigin", "*");
+
+  document.head.appendChild(tawkScript);
+}
+
 const year = document.querySelector<HTMLElement>("#year");
 
 if (year) {
