@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_publishable_key: str = ""
     supabase_secret_key: str = ""
+    turnstile_site_key: str = ""
 
     paystack_secret_key: str = ""
     partnership_proof_encryption_key: str = ""

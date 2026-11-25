@@ -22,6 +22,7 @@ class RegistrationRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=100)
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=8, max_length=128)
+    captcha_token: str = Field(min_length=1, max_length=4096)
     referral_code: str | None = None
     agent_code: str | None = None
 
@@ -245,6 +246,15 @@ def get_profile_for_token(client, access_token: str) -> dict:
         raise HTTPException(401, "Your session is invalid or has expired.")
 
 
+@router.get("/captcha-config")
+def captcha_config() -> dict:
+    site_key = settings.turnstile_site_key.strip()
+    return {
+        "enabled": bool(site_key),
+        "site_key": site_key or None,
+    }
+
+
 @router.post("/register", status_code=201)
 def register_account(payload: RegistrationRequest) -> dict:
     if payload.account_type == "agent":
@@ -287,6 +297,7 @@ def register_account(payload: RegistrationRequest) -> dict:
             "password": payload.password,
             "options": {
                 "data": metadata,
+                "captcha_token": payload.captcha_token,
                 "email_redirect_to": (
                     f"{settings.frontend_url.rstrip('/')}/login.html"
                 ),

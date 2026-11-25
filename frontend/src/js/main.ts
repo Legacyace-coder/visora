@@ -18,6 +18,23 @@ interface ApiResult {
   user?: SessionUser;
 }
 
+interface TurnstileApi {
+  render(
+    container: HTMLElement,
+    options: {
+      sitekey: string;
+      callback: (token: string) => void;
+      "expired-callback"?: () => void;
+      "error-callback"?: () => void;
+    },
+  ): string;
+  reset(widgetId?: string): void;
+}
+
+interface Window {
+  turnstile?: TurnstileApi;
+}
+
 const isLocalDevelopment =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
@@ -279,10 +296,119 @@ async function getSessionUser(): Promise<SessionUser | null> {
 const registerForm =
   document.querySelector<HTMLFormElement>("#register-form");
 
+const turnstileContainer =
+  document.querySelector<HTMLElement>("#turnstile-container");
+const turnstileStatus =
+  document.querySelector<HTMLElement>("#turnstile-status");
+
+let registrationCaptchaToken: string | null = null;
+let registrationTurnstileWidgetId: string | null = null;
+
+function setRegistrationCaptchaState(
+  verified: boolean,
+  statusText: string,
+): void {
+  registrationCaptchaToken = null;
+  if (turnstileStatus) turnstileStatus.textContent = statusText;
+
+  const button =
+    registerForm?.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (button) button.disabled = !verified;
+}
+
+async function loadTurnstileApi(): Promise<void> {
+  if (window.turnstile) return;
+
+  await new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src =
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () =>
+      reject(new Error("Cloudflare human verification could not be loaded."));
+    document.head.appendChild(script);
+  });
+
+  if (!window.turnstile) {
+    throw new Error("Cloudflare human verification is unavailable.");
+  }
+}
+
+async function initializeRegistrationCaptcha(): Promise<void> {
+  if (!registerForm || !turnstileContainer || !turnstileStatus) return;
+
+  setRegistrationCaptchaState(false, "Loading human verification...");
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/auth/captcha-config`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Human verification configuration could not be loaded.");
+    }
+
+    const config = await response.json() as {
+      enabled?: boolean;
+      site_key?: string | null;
+    };
+
+    if (!config.enabled || !config.site_key) {
+      throw new Error(
+        "Human verification is not configured. Please contact Visora support.",
+      );
+    }
+
+    await loadTurnstileApi();
+
+    registrationTurnstileWidgetId = window.turnstile!.render(
+      turnstileContainer,
+      {
+        sitekey: config.site_key,
+        callback: (token: string) => {
+          registrationCaptchaToken = token;
+          const button =
+            registerForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+          if (button) button.disabled = false;
+          turnstileStatus.textContent = "Human verification completed.";
+        },
+        "expired-callback": () => {
+          setRegistrationCaptchaState(
+            false,
+            "Verification expired. Please complete it again.",
+          );
+        },
+        "error-callback": () => {
+          setRegistrationCaptchaState(
+            false,
+            "Verification failed. Please try again.",
+          );
+        },
+      },
+    );
+  } catch (error) {
+    setRegistrationCaptchaState(
+      false,
+      error instanceof Error
+        ? error.message
+        : "Human verification is unavailable.",
+    );
+  }
+}
+
+void initializeRegistrationCaptcha();
+
 registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
   event.preventDefault();
 
   if (!message) return;
+
+  if (!registrationCaptchaToken) {
+    message.textContent = "Please complete human verification before registering.";
+    return;
+  }
 
   const submitButton =
     registerForm.querySelector<HTMLButtonElement>('button[type="submit"]');
@@ -294,6 +420,7 @@ registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
     display_name: String(formData.get("display_name") ?? "").trim(),
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
+    captcha_token: registrationCaptchaToken,
     referral_code: String(formData.get("referral_code") ?? "").trim().toUpperCase() || null,
     agent_code: String(formData.get("agent_code") ?? "").trim().toUpperCase() || null,
   };
@@ -328,8 +455,18 @@ registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
         ? error.message
         : "Something went wrong. Please try again.";
   } finally {
+    registrationCaptchaToken = null;
+
+    if (registrationTurnstileWidgetId && window.turnstile) {
+      window.turnstile.reset(registrationTurnstileWidgetId);
+    }
+
+    if (turnstileStatus) {
+      turnstileStatus.textContent = "Please complete human verification again.";
+    }
+
     if (submitButton) {
-      submitButton.disabled = false;
+      submitButton.disabled = true;
       submitButton.textContent = "Create account →";
     }
   }

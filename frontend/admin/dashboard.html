@@ -51,10 +51,12 @@
       </div>
     </section>
 
-    <section class="dashboard-account" id="account" data-dashboard-view>
-      <p class="eyebrow">ACCOUNT DETAILS</p>
-      <h2>Account details</h2>
-
+    <section class="dashboard-account admin-view" id="account" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">01 / YOUR ACCOUNT</p><h2>Account details<span>.</span></h2><p>Your administrator profile and workspace identity.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / A</span>
+      </div>
+      <div class="admin-account-grid">
       <div class="account-detail">
         <span>Account type</span>
         <strong>Administrator</strong>
@@ -69,11 +71,16 @@
         <span>Account code</span>
         <strong id="account-code">Loading...</strong>
       </div>
+      </div>
     </section>
 
-    <section class="workspace-panel" id="platform-accounts" aria-labelledby="platform-accounts-heading" data-dashboard-view>
-      <p class="eyebrow">PLATFORM ACCOUNTS</p>
-      <h2 id="platform-accounts-heading">Photographers and agents</h2>
+    <section class="workspace-panel admin-view" id="platform-accounts" aria-labelledby="platform-accounts-heading" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">02 / PEOPLE</p><h2 id="platform-accounts-heading">Photographers and agents<span>.</span></h2><p>Manage the people who make up your platform.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 02</span>
+      </div>
+      <div class="admin-module">
+      <p class="admin-module-label">AGENT MANAGEMENT</p>
       <form id="admin-create-agent-form" class="workspace-form">
         <h3>Create an agent account</h3>
         <p>Set a temporary password and share it securely with the agent. Ask them to change it after signing in. The email is marked confirmed when the account is created.</p>
@@ -88,76 +95,119 @@
         <button class="button button-dark small" type="submit">Create agent</button>
         <p id="admin-create-agent-status" role="status" aria-live="polite"></p>
       </form>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">ACCOUNT DIRECTORY</p><h3>Platform accounts</h3><p>Review and manage photographer and agent accounts.</p></div>
       <button id="admin-accounts-refresh" class="button button-dark small" type="button">Refresh accounts</button>
+      </div>
       <p id="admin-accounts-status" role="status" aria-live="polite"></p>
       <div id="admin-accounts-list" class="submission-list"></div>
       <button id="admin-accounts-more" class="button button-dark small" type="button" hidden>Load more accounts</button>
+      </div>
     </section>
 
-    <section class="workspace-panel" aria-labelledby="admin-submissions-heading" data-dashboard-view>
-      <p class="eyebrow">SUBMISSION REVIEW</p>
-      <h2 id="admin-submissions-heading">Review submissions</h2>
-      <p class="workspace-hint">Accepted and rejected decisions are final.</p>
+    <section class="workspace-panel admin-view" aria-labelledby="admin-submissions-heading" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">03 / REVIEW</p><h2 id="admin-submissions-heading">Review submissions<span>.</span></h2><p>Consider the work shared by your photographers.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 03</span>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">SUBMISSION QUEUE</p><h3>Work for review</h3><p>Accepted and rejected decisions are final.</p></div>
       <button id="admin-submissions-refresh" class="button button-dark small" type="button">Refresh submissions</button>
+      </div>
       <p id="admin-submissions-status" role="status" aria-live="polite"></p>
       <div id="admin-submission-list" class="submission-list"></div>
       <button id="admin-submissions-more" class="button button-dark small" type="button" hidden>Load more submissions</button>
+      </div>
     </section>
 
-    <section class="workspace-panel" aria-labelledby="admin-offers-heading" data-dashboard-view>
-      <p class="eyebrow">ACQUISITIONS</p>
-      <h2 id="admin-offers-heading">Offers and agreements</h2>
-      <p class="workspace-hint">Create an offer from an accepted submission in <a class="underlined" href="#admin-submissions-heading">submission review</a>. Agreement terms cannot be edited after sending.</p>
+    <section class="workspace-panel admin-view" aria-labelledby="admin-offers-heading" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">04 / ACQUISITIONS</p><h2 id="admin-offers-heading">Offers and agreements<span>.</span></h2><p>Manage the agreements behind the work.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 04</span>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">ACQUISITION ACTIVITY</p><h3>Offer history</h3><p>Create an offer from an accepted submission in <a class="underlined" href="#admin-submissions-heading">submission review</a>. Agreement terms cannot be edited after sending.</p></div>
       <button id="admin-offers-refresh" class="button button-dark small" type="button">Refresh offers</button>
+      </div>
       <p id="admin-offers-status" role="status" aria-live="polite"></p>
       <div id="admin-offers" class="submission-list"></div>
       <button id="admin-offers-more" class="button button-dark small" type="button" hidden>Load more offers</button>
+      </div>
     </section>
 
-    <section class="workspace-panel" aria-labelledby="admin-publications-heading" data-dashboard-view>
-      <p class="eyebrow">PUBLICATION</p>
-      <h2 id="admin-publications-heading">Publication history</h2>
-      <p class="workspace-hint">Publish from an accepted offer with gallery permission. Originals are publicly accessible.</p>
+    <section class="workspace-panel admin-view" aria-labelledby="admin-publications-heading" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">05 / PUBLICATIONS</p><h2 id="admin-publications-heading">Publication history<span>.</span></h2><p>See how photographs are presented to the world.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 05</span>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">GALLERY ACTIVITY</p><h3>Published work</h3><p>Publish from an accepted offer with gallery permission. Originals are publicly accessible.</p></div>
       <button id="admin-publications-refresh" class="button button-dark small" type="button">Refresh publications</button>
+      </div>
       <p id="admin-publications-status" role="status" aria-live="polite"></p>
       <div id="admin-publications" class="submission-list"></div>
       <button id="admin-publications-more" class="button button-dark small" type="button" hidden>Load more publications</button>
+      </div>
     </section>
 
-    <section class="workspace-panel" aria-labelledby="admin-partnerships-heading" data-dashboard-view>
-      <p class="eyebrow">PARTNERSHIP REVIEW</p>
-      <h2 id="admin-partnerships-heading">Partnership applications</h2>
-      <p class="workspace-hint">Verify the purchase independently before approval. Access to proof is recorded.</p>
+    <section class="workspace-panel admin-view" aria-labelledby="admin-partnerships-heading" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">06 / PARTNERSHIPS</p><h2 id="admin-partnerships-heading">Partnership review<span>.</span></h2><p>Review applications and follow partner progress.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 06</span>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">APPLICATIONS</p><h3>Partnership applications</h3><p>Verify the purchase independently before approval. Access to proof is recorded.</p></div>
       <button id="admin-partnerships-refresh" class="button button-dark small" type="button">Refresh applications</button>
+      </div>
       <p id="admin-partnerships-status" role="status" aria-live="polite"></p>
       <div id="admin-partnerships" class="submission-list"></div>
       <button id="admin-partnerships-more" class="button button-dark small" type="button" hidden>Load more applications</button>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">WEEKLY TARGETS</p>
       <h3 id="admin-partner-progress-heading">Partner weekly progress</h3>
-      <p class="workspace-hint">First-time approved photographs since partnership approval, for the current Monday–Monday UTC week.</p>
+      <p>First-time approved photographs since partnership approval, for the current Monday–Monday UTC week.</p></div>
       <button id="admin-partner-progress-refresh" class="button button-dark small" type="button">Refresh progress</button>
+      </div>
       <p id="admin-partner-progress-status" role="status" aria-live="polite"></p>
       <div id="admin-partner-progress" class="submission-list"></div>
       <button id="admin-partner-progress-more" class="button button-dark small" type="button" hidden>Load more partners</button>
+      </div>
     </section>
 
-    <section class="workspace-panel" aria-labelledby="admin-withdrawals-heading" data-dashboard-view>
-      <p class="eyebrow">WITHDRAWALS AND FEES</p>
-      <h2 id="admin-withdrawals-heading">Withdrawal management</h2>
+    <section class="workspace-panel admin-view" aria-labelledby="admin-withdrawals-heading" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">07 / FINANCE</p><h2 id="admin-withdrawals-heading">Withdrawal management<span>.</span></h2><p>Manage fee settings and review withdrawal activity.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 07</span>
+      </div>
+      <div class="admin-module">
+      <p class="admin-module-label">PAYMENT SETTINGS</p><h3>Fee recipient</h3>
       <form id="fee-recipient-form" class="workspace-form">
         <label for="withdrawal-fee-recipient">Fee recipient account</label>
         <input id="withdrawal-fee-recipient" name="recipient" maxlength="1000" placeholder="Bank account, USDT address or cash delivery instructions">
         <button class="button button-dark small" type="submit">Save fee recipient</button>
         <p id="fee-recipient-status" role="status" aria-live="polite"></p>
       </form>
+      </div>
+      <div class="admin-module">
+      <div class="admin-module-heading"><div><p class="admin-module-label">WITHDRAWAL ACTIVITY</p><h3>Requests and receipts</h3><p>Review requests and verify payment and refund receipts.</p></div>
       <button id="admin-withdrawals-refresh" class="button button-dark small" type="button">Refresh withdrawals</button>
+      </div>
       <p id="admin-withdrawals-status" role="status" aria-live="polite"></p>
       <div id="admin-withdrawals" class="submission-list"></div>
       <button id="admin-withdrawals-more" class="button button-dark small" type="button" hidden>Load more withdrawals</button>
+      </div>
     </section>
 
-    <section class="admin-settings" id="partnership-settings" data-dashboard-view>
-      <p class="eyebrow">PARTNERSHIP SETTINGS</p>
-      <h2>Purchase destination</h2>
+    <section class="admin-settings admin-view" id="partnership-settings" data-dashboard-view>
+      <div class="admin-page-heading">
+        <div><p class="admin-kicker">08 / SETTINGS</p><h2>Partnership settings<span>.</span></h2><p>Manage the purchase destination and agreement documents.</p></div>
+        <span class="admin-heading-mark" aria-hidden="true">V / 08</span>
+      </div>
+      <div class="admin-module">
+      <p class="admin-module-label">PURCHASE LINK</p>
+      <h3>Purchase destination</h3>
       <p class="admin-settings-description">
         Set the destination used by the public partnership purchase link.
         You can change it here whenever the destination changes.
@@ -182,8 +232,12 @@
         </button>
         <p id="partnership-purchase-status" role="status" aria-live="polite"></p>
       </form>
-      <h2>Agreement documents</h2>
+      </div>
+      <div class="admin-module">
+      <p class="admin-module-label">AGREEMENTS</p>
+      <h3>Agreement documents</h3>
       <p class="admin-settings-description">Upload PDF agreements (up to 2 MB). Previous uploads are retained.</p>
+      <div class="admin-agreements">
       <form class="workspace-form agreement-upload" data-agreement-kind="partnership">
         <label for="partnership-agreement-file">Partnership agreement PDF</label>
         <input id="partnership-agreement-file" type="file" accept="application/pdf,.pdf" required>
@@ -197,6 +251,8 @@
         <button class="button button-dark small" type="submit">Upload acquisition agreement</button>
         <p role="status" aria-live="polite"></p>
       </form>
+      </div>
+      </div>
     </section>
 
     </div>

@@ -1,4 +1,4 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -98,6 +98,7 @@ def base_payload():
         "display_name": "Test Studio",
         "email": "photographer@example.com",
         "password": "StrongPassword123",
+        "captcha_token": "test-turnstile-token",
         "referral_code": "P-ABC-12345",
         "agent_code": "A-XYZ-67890",
     }
@@ -111,6 +112,7 @@ def test_photographer_registration_sends_both_referral_codes(monkeypatch):
     assert response.status_code == 201
     assert response.json()["confirmation_required"] is True
 
+    assert fake.auth.payload["options"]["captcha_token"] == "test-turnstile-token"
     metadata = fake.auth.payload["options"]["data"]
 
     assert metadata["account_type"] == "photographer"
@@ -124,6 +126,28 @@ def test_photographer_registration_sends_both_referral_codes(monkeypatch):
     )
     assert created_profile["referred_by"] == "photographer-referrer-id"
     assert created_profile["referred_by_agent"] == "agent-referrer-id"
+
+
+def test_registration_requires_captcha_token(monkeypatch):
+    configure_fake_supabase(monkeypatch)
+    payload = base_payload()
+    payload.pop("captcha_token")
+
+    response = client.post("/auth/register", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_captcha_config_returns_public_site_key(monkeypatch):
+    monkeypatch.setattr(auth.settings, "turnstile_site_key", "test-public-site-key")
+
+    response = client.get("/auth/captcha-config")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "enabled": True,
+        "site_key": "test-public-site-key",
+    }
 
 
 def test_agent_registration_requires_admin(monkeypatch):
