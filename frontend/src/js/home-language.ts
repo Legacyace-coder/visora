@@ -149,11 +149,44 @@ interface Window {
     try { localStorage.setItem("visora-home-language", picker.value); }
     catch (error) { console.warn("Language preference could not be saved.", error); }
   });
+  const isSupported = (value: unknown): value is string =>
+    value === "en" || languages.some(language => language === value);
+  const fromBrowser = (): string | null => {
+    for (const tag of navigator.languages || [navigator.language]) {
+      const code = (tag || "").toLowerCase().split("-")[0];
+      if (isSupported(code)) return code;
+    }
+    return null;
+  };
+  const autoDetect = async (): Promise<void> => {
+    let detected: string | null = null;
+    const host = window.location.hostname;
+    const base = host === "localhost" || host === "127.0.0.1" ? "http://127.0.0.1:8000" : "/api";
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 2500);
+      const response = await fetch(`${base}/public/locale`, { cache: "no-store", signal: controller.signal });
+      window.clearTimeout(timer);
+      if (response.ok) {
+        const data = await response.json();
+        if (isSupported(data.language)) detected = data.language;
+      }
+    } catch (error) { console.warn("IP-based language detection is unavailable.", error); }
+    detected = detected || fromBrowser();
+    // A manual choice made while detection was running wins.
+    try { if (localStorage.getItem("visora-home-language")) return; } catch { /* ignore */ }
+    if (detected && detected !== "en") {
+      picker.value = detected;
+      apply(detected);
+    }
+  };
   try {
     const saved = localStorage.getItem("visora-home-language");
-    if (saved && (saved === "en" || languages.some(language => language === saved))) {
+    if (saved && isSupported(saved)) {
       picker.value = saved;
       apply(saved);
+    } else {
+      void autoDetect();
     }
   } catch (error) { console.warn("Language preference could not be read.", error); }
   new MutationObserver(translateTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
