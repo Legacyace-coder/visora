@@ -67,7 +67,7 @@
     const setOpen = (open: boolean, restoreFocus = false): void => {
       header.classList.toggle("menu-open", open);
       toggle.setAttribute("aria-expanded", String(open));
-      toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      toggle.setAttribute("aria-label", window.siteMenuLabel?.(open) ?? (open ? "Close menu" : "Open menu"));
       if (!open && restoreFocus) toggle.focus();
     };
     toggle.addEventListener("click", () => setOpen(!header.classList.contains("menu-open")));
