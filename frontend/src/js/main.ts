@@ -509,10 +509,90 @@ registerForm?.addEventListener("submit", async (event: SubmitEvent) => {
 // Login
 const loginForm = document.querySelector<HTMLFormElement>("#login-form");
 
+const loginTurnstileContainer =
+  document.querySelector<HTMLElement>("#login-turnstile-container");
+const loginTurnstileStatus =
+  document.querySelector<HTMLElement>("#login-turnstile-status");
+
+let loginCaptchaToken: string | null = null;
+let loginTurnstileWidgetId: string | null = null;
+
+async function initializeLoginCaptcha(): Promise<void> {
+  if (!loginForm || !loginTurnstileContainer || !loginTurnstileStatus) return;
+
+  const button =
+    loginForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+  if (button) button.disabled = true;
+  loginTurnstileStatus.textContent = "Loading human verification...";
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/auth/captcha-config`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Human verification configuration could not be loaded.");
+    }
+
+    const config = await response.json() as {
+      enabled?: boolean;
+      site_key?: string | null;
+    };
+
+    if (!config.enabled || !config.site_key) {
+      throw new Error(
+        "Human verification is not configured. Please contact Visora support.",
+      );
+    }
+
+    await loadTurnstileApi();
+
+    loginTurnstileWidgetId = window.turnstile!.render(
+      loginTurnstileContainer,
+      {
+        sitekey: config.site_key,
+        callback: (token: string) => {
+          loginCaptchaToken = token;
+          if (button) button.disabled = false;
+          loginTurnstileStatus.textContent = "Human verification completed.";
+        },
+        "expired-callback": () => {
+          loginCaptchaToken = null;
+          if (button) button.disabled = true;
+          loginTurnstileStatus.textContent =
+            "Verification expired. Please complete it again.";
+        },
+        "error-callback": () => {
+          loginCaptchaToken = null;
+          if (button) button.disabled = true;
+          loginTurnstileStatus.textContent =
+            "Verification failed. Please try again.";
+        },
+      },
+    );
+  } catch (error) {
+    loginCaptchaToken = null;
+    if (button) button.disabled = true;
+    loginTurnstileStatus.textContent =
+      error instanceof Error
+        ? error.message
+        : "Human verification is unavailable.";
+  }
+}
+
+void initializeLoginCaptcha();
+
 loginForm?.addEventListener("submit", async (event: SubmitEvent) => {
   event.preventDefault();
 
   if (!message) return;
+
+  if (!loginCaptchaToken) {
+    message.textContent =
+      "Please complete human verification before signing in.";
+    return;
+  }
 
   const submitButton =
     loginForm.querySelector<HTMLButtonElement>('button[type="submit"]');
@@ -522,6 +602,7 @@ loginForm?.addEventListener("submit", async (event: SubmitEvent) => {
   const payload = {
     email: String(formData.get("email") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
+    captcha_token: loginCaptchaToken,
   };
 
   message.textContent = "Signing you in...";
@@ -558,9 +639,19 @@ loginForm?.addEventListener("submit", async (event: SubmitEvent) => {
         ? error.message
         : "Something went wrong. Please try again.";
   } finally {
+    loginCaptchaToken = null;
+
+    if (loginTurnstileWidgetId && window.turnstile) {
+      window.turnstile.reset(loginTurnstileWidgetId);
+    }
+
+    if (loginTurnstileStatus) {
+      loginTurnstileStatus.textContent = "Please complete human verification again.";
+    }
+
     if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = "Continue →";
+      submitButton.disabled = true;
+      submitButton.textContent = "Continue";
     }
   }
 });

@@ -43,8 +43,15 @@
         </button>
       </div>
 
-      <button class="button button-dark" type="submit">
-        Continue →
+      <div class="captcha-field">
+        <div id="login-turnstile-container"></div>
+        <p id="login-turnstile-status" class="hint" role="status" aria-live="polite">
+          Loading human verification...
+        </p>
+      </div>
+
+      <button class="button button-dark" type="submit" disabled>
+        Continue ?
       </button>
 
       <p id="form-message" role="status" aria-live="polite"></p>
