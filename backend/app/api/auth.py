@@ -50,6 +50,7 @@ class RegistrationRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=1, max_length=128)
+    captcha_token: str = Field(min_length=1, max_length=4096)
 
     @field_validator("email")
     @classmethod
@@ -344,6 +345,9 @@ def login(payload: LoginRequest, response: Response) -> dict:
         result = client.auth.sign_in_with_password({
             "email": payload.email,
             "password": payload.password,
+            "options": {
+                "captcha_token": payload.captcha_token,
+            },
         })
 
         if not result.user or not result.session:
