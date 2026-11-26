@@ -15,7 +15,7 @@
 <header class="site-header">
   <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
 
-  <nav aria-label="Main navigation">
+  <nav id="site-menu" aria-label="Main navigation">
     <a href="/" aria-current="page">Home</a>
     <a href="/collection.html">Collection</a>
     <a href="/gallery.html">Gallery</a>
@@ -25,6 +25,7 @@
 
   <div class="header-actions">
     <label class="language-picker"><span>Language</span>
+      <svg class="language-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9S9.400 5.700 12 3z"/></svg>
       <select id="home-language" aria-label="Language">
         <option value="en">English</option>
         <option value="ja">日本語</option>
@@ -39,6 +40,7 @@
     <a class="button button-dark small" href="/register.html">Join Visora</a>
     <button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button>
   </div>
+  <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="site-menu" aria-label="Open menu"><span></span><span></span><span></span></button>
 </header>
 
 <main class="inner-page">

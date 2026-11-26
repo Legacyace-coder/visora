@@ -59,6 +59,29 @@
       });
     });
   });
+  document.addEventListener("DOMContentLoaded", () => {
+    const header = document.querySelector<HTMLElement>(".site-header");
+    const toggle = header?.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+    if (!header || !toggle) return;
+    const desktop = window.matchMedia("(min-width: 761px)");
+    const setOpen = (open: boolean, restoreFocus = false): void => {
+      header.classList.toggle("menu-open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      if (!open && restoreFocus) toggle.focus();
+    };
+    toggle.addEventListener("click", () => setOpen(!header.classList.contains("menu-open")));
+    header.addEventListener("click", (event) => {
+      if ((event.target as HTMLElement).closest("nav a, .header-actions > a")) setOpen(false);
+    });
+    document.addEventListener("click", (event) => {
+      if (!header.contains(event.target as Node)) setOpen(false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && header.classList.contains("menu-open")) setOpen(false, true);
+    });
+    desktop.addEventListener("change", () => { if (desktop.matches) setOpen(false); });
+  });
   preference.addEventListener("change", () => {
     if (!savedTheme) applyTheme(systemTheme());
   });

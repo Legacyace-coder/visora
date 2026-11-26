@@ -12,7 +12,7 @@
 <body>
   <header class="site-header">
     <a class="wordmark brand-logo" href="/" aria-label="Visora home"><img class="logo-on-light" src="/images/visora-inc-logo-light-750.png" alt="Visora" width="750" height="280"><img class="logo-on-dark" src="/images/visora-inc-logo-dark-750.png" alt="Visora" width="750" height="280"></a>
-    <nav aria-label="Main navigation">
+    <nav id="site-menu" aria-label="Main navigation">
       <a href="/">Home</a>
       <a href="/collection.html">Collection</a>
       <a href="/gallery.html" aria-current="page">Gallery</a>
@@ -20,6 +20,7 @@
       <a href="/about.html">About</a>
     </nav>
     <div class="header-actions"><a href="/login.html">Sign in</a><button class="theme-toggle" type="button" data-theme-toggle hidden><span data-theme-icon aria-hidden="true">☾</span><span data-theme-label>Dark mode</span></button></div>
+        <button class="menu-toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="site-menu" aria-label="Open menu"><span></span><span></span><span></span></button>
   </header>
   <main class="inner-page">
     <section class="page-hero">

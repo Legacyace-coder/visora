@@ -2288,3 +2288,95 @@ img { max-width: 100%; }
   .photo-stories-grid img,
   .photo-stories-grid figure:last-child img { height: 72vw; }
 }
+
+/* Language select redesign */
+.language-picker { position: relative; display: inline-flex; align-items: center; gap: 0; }
+.language-picker > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.language-picker .language-icon { position: absolute; left: 12px; pointer-events: none; opacity: .75; }
+.language-picker select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: auto;
+  max-width: 150px;
+  min-height: 38px;
+  padding: 8px 30px 8px 34px;
+  border: 1px solid #c9c8bf;
+  border-radius: 999px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23191916' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.500 4.500 6 8l3.500-3.500'/%3E%3C/svg%3E") no-repeat right 11px center;
+  color: #191916;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s;
+}
+.language-picker select:hover { border-color: #191916; }
+.language-picker select:focus-visible { outline: 2px solid #4d7457; outline-offset: 2px; }
+[data-theme="dark"] .language-picker select {
+  background: #202832 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23f0eee7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.500 4.500 6 8l3.500-3.500'/%3E%3C/svg%3E") no-repeat right 11px center;
+  color: #f0eee7;
+  border-color: #49535c;
+}
+[data-theme="dark"] .language-picker select:hover { border-color: #f0eee7; }
+@media (max-width: 480px) {
+  .language-picker select { width: auto; max-width: 128px; min-height: 40px; padding: 8px 26px 8px 32px; font-size: 12px; }
+  .language-picker .language-icon { left: 11px; }
+}
+
+/* Hamburger menu */
+.menu-toggle { display: none; }
+
+@media (max-width: 760px) {
+  .site-header { flex-wrap: wrap; row-gap: 0; column-gap: 10px; }
+  .site-header .brand-logo { order: 1; margin-right: auto; }
+  .header-actions { display: contents; }
+  .header-actions .language-picker { order: 2; }
+  .menu-toggle {
+    order: 3;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid #c9c8bf;
+    border-radius: 50%;
+    background: transparent;
+    color: #191916;
+    cursor: pointer;
+  }
+  .menu-toggle span { display: block; width: 16px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .2s, opacity .2s; }
+  .menu-toggle:focus-visible { outline: 2px solid #4d7457; outline-offset: 2px; }
+  .menu-open .menu-toggle span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+  .menu-open .menu-toggle span:nth-child(2) { opacity: 0; }
+  .menu-open .menu-toggle span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  [data-theme="dark"] .menu-toggle { color: #f0eee7; border-color: #49535c; }
+
+  .site-header nav,
+  .header-actions > :not(.language-picker) { display: none; }
+
+  .menu-open nav {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    order: 4;
+    width: 100%;
+    gap: 8px;
+    padding: 16px 0 8px;
+    overflow: visible;
+  }
+  .menu-open nav a { text-align: center; padding: 12px 13px; font-size: 12px; }
+  .menu-open .header-actions > a:not(.button) {
+    display: block;
+    order: 5;
+    width: 100%;
+    padding: 12px 0 4px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .menu-open .header-actions > .button { display: inline-flex; order: 6; width: 100%; margin-top: 8px; padding: 14px 15px; }
+  .menu-open .header-actions > .theme-toggle:not([hidden]) { display: inline-flex; order: 7; width: 100%; justify-content: center; margin: 8px 0 4px; min-height: 42px; }
+  .menu-open .header-actions > .theme-status { display: block; order: 8; width: 100%; max-width: none; text-align: center; }
+}
